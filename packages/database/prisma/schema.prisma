@@ -1,0 +1,267 @@
+// CUST University Portal — Prisma Schema
+// PostgreSQL + Prisma ORM (type-safe end to end with the NestJS backend)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// AUTH / USERS
+// ─────────────────────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  student      Student?
+  teacher      Teacher?
+  admin        Admin?
+}
+
+model Admin {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────
+// ACADEMIC STRUCTURE
+// ─────────────────────────────────────────────────────────────
+
+model Department {
+  id            String   @id @default(uuid())
+  name          String   @unique // e.g. "Software Engineering", "Electrical Engineering"
+  code          String   @unique // e.g. "SE", "EE"
+  // Default class-timing window for this department (used by the generator
+  // as a preference, not a hard rule — admin can override per section)
+  dayStartTime  String?  // e.g. "08:00"
+  dayEndTime    String?  // e.g. "16:00"
+
+  teachers      Teacher[]
+  students      Student[]
+  courses       Course[]
+}
+
+model Student {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  enrollmentNo String   @unique // e.g. BSE233016
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  semester     Int
+  sectionId    String?
+  section      Section?  @relation(fields: [sectionId], references: [id])
+
+  submissions   Submission[]
+  attendances   Attendance[]
+  grades        Grade[]
+  enrollments   Enrollment[]
+}
+
+model Teacher {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  designation  String?  // e.g. "Lecturer", "Assistant Professor"
+
+  sections     Section[]
+}
+
+model Course {
+  id           String   @id @default(uuid())
+  code         String   @unique // e.g. "SE4103"
+  title        String
+  creditHours  Int
+  requiresLab  Boolean  @default(false) // drives room-type matching in the generator
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  sections     Section[]
+}
+
+// A Section = one specific offering of a Course for a batch/term,
+// taught by one teacher, with its own timetable slots and roster.
+model Section {
+  id           String   @id @default(uuid())
+  courseId     String
+  course       Course   @relation(fields: [courseId], references: [id])
+  teacherId    String
+  teacher      Teacher  @relation(fields: [teacherId], references: [id])
+  term         String   // e.g. "Fall 2026"
+  capacity     Int      @default(40)
+
+  students        Student[]
+  slots           TimetableSlot[]
+  assignments     Assignment[]
+  attendanceDays  Attendance[]
+  enrollments     Enrollment[]
+}
+
+model Enrollment {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  sectionId  String
+  section    Section  @relation(fields: [sectionId], references: [id])
+  status     String   @default("ACTIVE") // ACTIVE | WITHDRAWN | COMPLETED
+  enrolledAt DateTime @default(now())
+
+  @@unique([studentId, sectionId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// CAMPUS / ROOMS (Blocks -> Floors -> Rooms)
+// ─────────────────────────────────────────────────────────────
+
+model Block {
+  id     String  @id @default(uuid())
+  name   String  @unique // "A","B","C","D","E","F","H","J","K"
+  floors Floor[]
+}
+
+model Floor {
+  id          String @id @default(uuid())
+  blockId     String
+  block       Block  @relation(fields: [blockId], references: [id])
+  floorNumber Int    // 0 = ground floor, 1, 2, 3...
+  rooms       Room[]
+
+  @@unique([blockId, floorNumber])
+}
+
+enum RoomType {
+  LECTURE_HALL
+  LAB
+  SEMINAR_ROOM
+}
+
+model Room {
+  id         String   @id @default(uuid())
+  floorId    String
+  floor      Floor    @relation(fields: [floorId], references: [id])
+  label      String   // "B1", "B2"... unique within a block, matches CUST's room naming
+  capacity   Int
+  type       RoomType @default(LECTURE_HALL)
+
+  slots      TimetableSlot[]
+
+  @@unique([floorId, label])
+}
+
+// ─────────────────────────────────────────────────────────────
+// TIMETABLE
+// ─────────────────────────────────────────────────────────────
+
+enum Weekday {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+}
+
+model TimetableSlot {
+  id        String  @id @default(uuid())
+  sectionId String
+  section   Section @relation(fields: [sectionId], references: [id])
+  roomId    String
+  room      Room    @relation(fields: [roomId], references: [id])
+  day       Weekday
+  startTime String  // "09:00" (24h) — stored as string, compared as minutes in app logic
+  endTime   String  // "10:30"
+
+  // Note: true overlap-prevention (same room/teacher/section clashing in
+  // time) is enforced in the TimetableService, not by a DB unique
+  // constraint, since Postgres can't express "no overlapping ranges"
+  // without an exclusion constraint extension (btree_gist). That's a
+  // good v2 upgrade — see docs/timetable-design.md.
+  @@index([day, roomId])
+  @@index([day, sectionId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// ASSIGNMENTS / SUBMISSIONS
+// ─────────────────────────────────────────────────────────────
+
+model Assignment {
+  id          String   @id @default(uuid())
+  sectionId   String
+  section     Section  @relation(fields: [sectionId], references: [id])
+  title       String
+  description String?
+  deadline    DateTime
+  fileUrl     String?  // instructions/attachment on R2
+  createdAt   DateTime @default(now())
+
+  submissions Submission[]
+}
+
+model Submission {
+  id           String    @id @default(uuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  studentId    String
+  student      Student   @relation(fields: [studentId], references: [id])
+  fileUrl      String
+  submittedAt  DateTime  @default(now())
+  grade        Float?
+  feedback     String?
+
+  @@unique([assignmentId, studentId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// ATTENDANCE
+// ─────────────────────────────────────────────────────────────
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  sectionId String
+  section   Section          @relation(fields: [sectionId], references: [id])
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id])
+  date      DateTime
+  status    AttendanceStatus
+
+  @@unique([sectionId, studentId, date])
+}
+
+// ─────────────────────────────────────────────────────────────
+// GRADES
+// ─────────────────────────────────────────────────────────────
+
+model Grade {
+  id        String  @id @default(uuid())
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+  courseId  String
+  component String  // "quiz1", "midterm", "final"
+  marks     Float
+  maxMarks  Float
+
+  @@unique([studentId, courseId, component])
+}
