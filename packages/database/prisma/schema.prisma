@@ -1,12 +1,12 @@
 // CUST University Portal — Prisma Schema
-// PostgreSQL + Prisma ORM (type-safe end to end with the NestJS backend)
+// MySQL (XAMPP for local dev) + Prisma ORM (type-safe end to end with the NestJS backend)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -190,10 +190,11 @@ model TimetableSlot {
   endTime   String  // "10:30"
 
   // Note: true overlap-prevention (same room/teacher/section clashing in
-  // time) is enforced in the TimetableService, not by a DB unique
-  // constraint, since Postgres can't express "no overlapping ranges"
-  // without an exclusion constraint extension (btree_gist). That's a
-  // good v2 upgrade — see docs/timetable-design.md.
+  // time) is enforced in the TimetableService, not by a DB constraint —
+  // neither MySQL nor Postgres can express "no overlapping time ranges"
+  // as a plain unique/check constraint without extra tooling (Postgres has
+  // btree_gist + EXCLUDE, MySQL has no equivalent at all). Application-level
+  // checkClash() is the actual mechanism and is DB-agnostic either way.
   @@index([day, roomId])
   @@index([day, sectionId])
 }

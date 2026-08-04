@@ -13,6 +13,7 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] All 19 backend modules stubbed (module/controller/service files, empty logic)
 - [x] Timetable module: clash-check + generator design written (logic TODO)
 - [x] CUST logo added to apps/web/public
+- [x] Switched DB engine from Postgres to MySQL (XAMPP-compatible) — schema.prisma provider + .env.example updated, no application code changes needed
 
 ## 1. Foundation (in progress)
 - [x] Seed script written (departments, blocks/floors/rooms, 1 admin/teacher/student sample user)
@@ -60,7 +61,7 @@ Legend: [x] done · [~] in progress · [ ] not started
 ## 7. Polish / Deployment (not started)
 - [ ] Docker setup for api + web
 - [ ] CI (typecheck + lint on push)
-- [ ] Deploy: web -> Vercel, api -> Railway/Render, DB -> managed Postgres
+- [ ] Deploy: web -> Vercel, api -> Railway/Render, DB -> managed MySQL (Railway/PlanetScale)
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
