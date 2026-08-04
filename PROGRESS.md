@@ -30,7 +30,7 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Admin UI: block/floor/room viewer (add-forms still TODO)
 - [x] Admin UI: trigger generation, review unplaced sections
 - [x] Student UI: personalized timetable view (grouped by day)
-- [ ] Teacher UI: personalized timetable view (same pattern as student's, not built yet)
+- [x] Teacher UI: personalized timetable view (built as a follow-up during the Assignments chunk)
 
 ## 3. Assignments (done for v1)
 - [x] Teacher: create/edit assignment + file upload (local disk storage for now — R2/S3 swap is a TODO)
@@ -40,9 +40,9 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Follow-up: teacher timetable view page
 - [x] Follow-up: GET /departments endpoint + real dropdown in the generator UI
 
-## 4. Attendance (not started)
-- [ ] Teacher: mark attendance per section per date (bulk UI)
-- [ ] Student: view % + low-attendance warning
+## 4. Attendance (done for v1)
+- [x] Teacher: mark attendance per section per date (bulk UI — roster with P/A toggles, re-marking overwrites via upsert)
+- [x] Student: view % with low-attendance alert (below 75% threshold)
 
 ## 5. Grades (not started)
 - [ ] Teacher: upload component-wise marks
@@ -64,5 +64,5 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Attendance module — teacher bulk-mark per section/date,
-student attendance % view with low-attendance warning.
+**Next chunk to build:** Grades module — teacher uploads component-wise marks,
+student sees a breakdown + computed GPA.
