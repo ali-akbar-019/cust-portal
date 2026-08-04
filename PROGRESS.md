@@ -21,8 +21,8 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Role guard + decorators (@Roles(), RolesGuard, JwtAuthGuard, @CurrentUser())
 - [x] Example wiring: BlocksController (GET = any authenticated role, POST = ADMIN only) + real BlocksService
 - [x] .env.example added for apps/api
-- [ ] Users/Students/Teachers modules: real CRUD (still stubs)
-- [ ] Frontend: login page, auth context, protected route wrapper per role
+- [x] Users/Students/Teachers modules: real CRUD (transactional user+profile create for students/teachers)
+- [x] Frontend: login page, auth context, protected route wrapper per role (Next.js middleware)
 
 ## 2. Timetable Engine (not started)
 - [ ] TimetableService.checkClash() — real Prisma-backed overlap query
@@ -61,5 +61,5 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Users/Students/Teachers real CRUD, then frontend login page + auth context
-(so we can actually click through login -> role-based dashboard end to end).
+**Next chunk to build:** Timetable Engine — real `checkClash()` Prisma query, then the
+generator's greedy+backtracking implementation, then the admin block/floor/room management UI.
