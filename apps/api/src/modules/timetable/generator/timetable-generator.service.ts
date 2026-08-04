@@ -1,43 +1,143 @@
 import { Injectable } from '@nestjs/common';
+import { prisma } from '@cust/database';
+import { overlaps, toMinutes } from '../time.util';
+
+type Weekday = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT';
+const DAYS: Weekday[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const SLOT_LENGTH_MIN = 90; // 1.5-hour class blocks
+
+interface PlacedSlot {
+  day: Weekday;
+  startTime: string;
+  endTime: string;
+  roomId: string;
+  teacherId: string;
+  sectionId: string;
+}
+
+interface SectionToPlace {
+  id: string;
+  teacherId: string;
+  capacity: number;
+  requiresLab: boolean;
+}
 
 /**
- * TIMETABLE GENERATOR — design notes
- * ------------------------------------------------------------------
- * Inputs it needs (all pulled from DB):
- *  - Blocks (A, B, C, D, E, F, H, J, K) -> each has Floors -> each Floor has Rooms
- *    (rooms are named like B1, B2, B3... within a block; capacity + type: lecture/lab)
- *  - Departments, each with their own preferred timing windows
- *    (e.g. CS dept classes 8-12, EE dept 12-4 — configurable, not hardcoded)
- *  - Courses + Sections (a Section = one offering of a Course for a batch/semester)
- *  - Teachers with weekly availability + max-load constraints
- *  - Room capacity vs Section's expected student count
- *
- * Algorithm approach: greedy + backtracking CSP (constraint satisfaction problem)
- *  1. Sort sections by "hardest to place first" (e.g. courses needing labs/large rooms,
- *     or teachers with the fewest available slots) — placing hard constraints first
- *     avoids painting yourself into a corner late in the run.
- *  2. For each section, generate the list of feasible (day, time, room) slots:
- *     - room capacity >= section size
- *     - room type matches course type (lab course -> lab room)
- *     - time falls within the department's allowed window
- *  3. Try candidates in order; before committing, call TimetableService.checkClash()
- *     against (room, teacher, section) for that day/time.
- *  4. If no candidate works for a section, backtrack: undo the previous section's
- *     placement and try its next candidate, then retry the stuck section.
- *  5. Persist the final valid assignment; anything that couldn't be placed after
- *     backtracking is returned to the admin as "needs manual placement".
- *
- * This keeps the algorithm explainable in an interview (it's a classic CSP,
- * not a black-box ML model) while staying fast enough for a few hundred
- * sections per semester.
+ * See docs/timetable-design.md for the full design rationale. Summary:
+ * greedy placement ordered hardest-first (labs, then largest sections),
+ * with backtracking against an in-memory list of tentative placements
+ * (not the DB) so a failed branch can be undone cheaply before we ever
+ * write anything. Only a fully-successful (or exhausted) run is persisted.
  */
 @Injectable()
 export class TimetableGeneratorService {
   async generate(departmentId: string) {
-    // TODO:
-    // 1. load blocks/floors/rooms, sections, teachers, department timing windows
-    // 2. run the greedy+backtracking assignment described above
-    // 3. return { placed: Slot[], unplaced: Section[] }
-    return { placed: [], unplaced: [] };
+    const department = await prisma.department.findUniqueOrThrow({ where: { id: departmentId } });
+    const dayStart = department.dayStartTime ?? '08:00';
+    const dayEnd = department.dayEndTime ?? '16:00';
+
+    const sections = await prisma.section.findMany({
+      where: { course: { departmentId } },
+      include: { course: true },
+    });
+    const toPlace: SectionToPlace[] = sections.map((s) => ({
+      id: s.id,
+      teacherId: s.teacherId,
+      capacity: s.capacity,
+      requiresLab: s.course.requiresLab,
+    }));
+    // hardest-first: lab sections, then by capacity descending (harder to fit)
+    toPlace.sort((a, b) => Number(b.requiresLab) - Number(a.requiresLab) || b.capacity - a.capacity);
+
+    const rooms = await prisma.room.findMany();
+    const timeSlots = this.buildTimeGrid(dayStart, dayEnd);
+
+    const placed: PlacedSlot[] = [];
+    const unplaced: string[] = [];
+
+    const success = this.backtrack(0, toPlace, rooms, timeSlots, placed);
+    if (!success) {
+      // whatever backtrack couldn't fit gets reported, rest stays placed
+      const placedSectionIds = new Set(placed.map((p) => p.sectionId));
+      unplaced.push(...toPlace.filter((s) => !placedSectionIds.has(s.id)).map((s) => s.id));
+    }
+
+    // persist only what was successfully placed
+    for (const slot of placed) {
+      await prisma.timetableSlot.create({
+        data: {
+          day: slot.day,
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          roomId: slot.roomId,
+          sectionId: slot.sectionId,
+        },
+      });
+    }
+
+    return { placedCount: placed.length, unplacedSectionIds: unplaced };
+  }
+
+  private buildTimeGrid(dayStart: string, dayEnd: string): { start: string; end: string }[] {
+    const slots: { start: string; end: string }[] = [];
+    let cursor = toMinutes(dayStart);
+    const end = toMinutes(dayEnd);
+    while (cursor + SLOT_LENGTH_MIN <= end) {
+      const start = cursor;
+      const finish = cursor + SLOT_LENGTH_MIN;
+      slots.push({
+        start: `${String(Math.floor(start / 60)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')}`,
+        end: `${String(Math.floor(finish / 60)).padStart(2, '0')}:${String(finish % 60).padStart(2, '0')}`,
+      });
+      cursor += SLOT_LENGTH_MIN;
+    }
+    return slots;
+  }
+
+  private hasInMemoryClash(candidate: PlacedSlot, placed: PlacedSlot[]): boolean {
+    return placed.some(
+      (p) =>
+        p.day === candidate.day &&
+        overlaps(candidate.startTime, candidate.endTime, p.startTime, p.endTime) &&
+        (p.roomId === candidate.roomId || p.teacherId === candidate.teacherId || p.sectionId === candidate.sectionId),
+    );
+  }
+
+  private backtrack(
+    index: number,
+    sections: SectionToPlace[],
+    rooms: { id: string; capacity: number; type: string }[],
+    timeSlots: { start: string; end: string }[],
+    placed: PlacedSlot[],
+  ): boolean {
+    if (index === sections.length) return true;
+    const section = sections[index];
+
+    const feasibleRooms = rooms.filter(
+      (r) => r.capacity >= section.capacity && (section.requiresLab ? r.type === 'LAB' : true),
+    );
+
+    for (const day of DAYS) {
+      for (const slot of timeSlots) {
+        for (const room of feasibleRooms) {
+          const candidate: PlacedSlot = {
+            day,
+            startTime: slot.start,
+            endTime: slot.end,
+            roomId: room.id,
+            teacherId: section.teacherId,
+            sectionId: section.id,
+          };
+          if (this.hasInMemoryClash(candidate, placed)) continue;
+
+          placed.push(candidate);
+          if (this.backtrack(index + 1, sections, rooms, timeSlots, placed)) return true;
+          placed.pop(); // undo and try the next candidate
+        }
+      }
+    }
+    // no candidate worked for this section — leave it for the caller to
+    // report as unplaced rather than failing the whole run
+    return this.backtrack(index + 1, sections, rooms, timeSlots, placed);
   }
 }

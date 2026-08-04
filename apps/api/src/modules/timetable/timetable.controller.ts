@@ -1,8 +1,12 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { TimetableService } from './timetable.service';
 import { TimetableGeneratorService } from './generator/timetable-generator.service';
 import { CreateSlotDto } from './dto/create-slot.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 
+@UseGuards(JwtAuthGuard)
 @Controller('timetable')
 export class TimetableController {
   constructor(
@@ -10,24 +14,24 @@ export class TimetableController {
     private readonly generatorService: TimetableGeneratorService,
   ) {}
 
-  @Get('student/:studentId')
-  getStudentTimetable() {
-    // TODO: return timetable filtered by student's section
+  @Get('section/:sectionId')
+  getSectionTimetable(@Param('sectionId') sectionId: string) {
+    return this.timetableService.getStudentTimetable(sectionId);
   }
 
-  @Get('teacher/:teacherId')
-  getTeacherTimetable() {
-    // TODO: return timetable filtered by teacher's assigned sections
-  }
-
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   @Post('slots')
-  createSlot(@Body() dto: CreateSlotDto) {
-    // TODO: runs clash detection before persisting
+  async createSlot(@Body() dto: CreateSlotDto) {
+    // TODO: derive teacherId server-side from dto.sectionId instead of
+    // trusting a client-supplied teacherId, once Section lookups are wired here
+    return this.timetableService.createSlot(dto as any);
   }
 
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   @Post('generate')
   generateTimetable(@Query('departmentId') departmentId: string) {
-    // TODO: trigger auto-generation for a department/semester
     return this.generatorService.generate(departmentId);
   }
 }

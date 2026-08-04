@@ -24,12 +24,13 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Users/Students/Teachers modules: real CRUD (transactional user+profile create for students/teachers)
 - [x] Frontend: login page, auth context, protected route wrapper per role (Next.js middleware)
 
-## 2. Timetable Engine (not started)
-- [ ] TimetableService.checkClash() — real Prisma-backed overlap query
-- [ ] TimetableGeneratorService.generate() — CSP greedy+backtracking implementation
-- [ ] Admin UI: block/floor/room management
-- [ ] Admin UI: trigger generation, review "unplaced" sections
-- [ ] Student/Teacher UI: personalized timetable view
+## 2. Timetable Engine (done for v1)
+- [x] TimetableService.checkClash() — real Prisma overlap query, reports which resource conflicted (room/teacher/section)
+- [x] TimetableGeneratorService.generate() — CSP greedy+backtracking implemented (in-memory backtrack, only persists a successful/exhausted run)
+- [x] Admin UI: block/floor/room viewer (add-forms still TODO)
+- [x] Admin UI: trigger generation, review unplaced sections
+- [x] Student UI: personalized timetable view (grouped by day)
+- [ ] Teacher UI: personalized timetable view (same pattern as student's, not built yet)
 
 ## 3. Assignments (not started)
 - [ ] Teacher: create/edit assignment + file upload (R2)
@@ -61,5 +62,6 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Timetable Engine — real `checkClash()` Prisma query, then the
-generator's greedy+backtracking implementation, then the admin block/floor/room management UI.
+**Next chunk to build:** Assignments module — teacher create/edit + file upload, student
+submit-before-deadline, teacher grade + feedback. Also a small follow-up: teacher timetable
+view page (copy of the student one) and a real GET /departments endpoint for the generator's UI dropdown.
