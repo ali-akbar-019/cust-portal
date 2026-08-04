@@ -14,11 +14,14 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Timetable module: clash-check + generator design written (logic TODO)
 - [x] CUST logo added to apps/web/public
 
-## 1. Foundation (not started)
-- [ ] Prisma migrate + seed script (departments, blocks/floors/rooms, sample users)
-- [ ] Auth: real login logic, password hashing, JWT issuance, refresh flow
-- [ ] Role guard + decorators (@Roles(), RolesGuard)
-- [ ] Users/Students/Teachers modules: real CRUD
+## 1. Foundation (in progress)
+- [x] Seed script written (departments, blocks/floors/rooms, 1 admin/teacher/student sample user)
+      — not yet run against a real DB (needs DATABASE_URL + `prisma migrate dev` on your machine)
+- [x] Auth: real login logic (bcrypt compare), JWT issuance (access 15m + refresh 7d), refresh endpoint
+- [x] Role guard + decorators (@Roles(), RolesGuard, JwtAuthGuard, @CurrentUser())
+- [x] Example wiring: BlocksController (GET = any authenticated role, POST = ADMIN only) + real BlocksService
+- [x] .env.example added for apps/api
+- [ ] Users/Students/Teachers modules: real CRUD (still stubs)
 - [ ] Frontend: login page, auth context, protected route wrapper per role
 
 ## 2. Timetable Engine (not started)
@@ -58,4 +61,5 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Prisma migrate + seed script, then real Auth logic.
+**Next chunk to build:** Users/Students/Teachers real CRUD, then frontend login page + auth context
+(so we can actually click through login -> role-based dashboard end to end).
