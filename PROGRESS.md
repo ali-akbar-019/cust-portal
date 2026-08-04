@@ -32,11 +32,13 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Student UI: personalized timetable view (grouped by day)
 - [ ] Teacher UI: personalized timetable view (same pattern as student's, not built yet)
 
-## 3. Assignments (not started)
-- [ ] Teacher: create/edit assignment + file upload (R2)
-- [ ] Student: submit before deadline (server-side deadline lock)
-- [ ] Teacher: grade + feedback
-- [ ] Notifications on new assignment / grade posted
+## 3. Assignments (done for v1)
+- [x] Teacher: create/edit assignment + file upload (local disk storage for now — R2/S3 swap is a TODO)
+- [x] Student: submit before deadline (server-side deadline lock, rejects late submissions)
+- [x] Teacher: grade + feedback
+- [ ] Notifications on new assignment / grade posted (waiting on Notifications module)
+- [x] Follow-up: teacher timetable view page
+- [x] Follow-up: GET /departments endpoint + real dropdown in the generator UI
 
 ## 4. Attendance (not started)
 - [ ] Teacher: mark attendance per section per date (bulk UI)
@@ -62,6 +64,5 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Assignments module — teacher create/edit + file upload, student
-submit-before-deadline, teacher grade + feedback. Also a small follow-up: teacher timetable
-view page (copy of the student one) and a real GET /departments endpoint for the generator's UI dropdown.
+**Next chunk to build:** Attendance module — teacher bulk-mark per section/date,
+student attendance % view with low-attendance warning.

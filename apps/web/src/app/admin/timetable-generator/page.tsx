@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 
@@ -8,13 +8,28 @@ interface GenerateResult {
   placedCount: number;
   unplacedSectionIds: string[];
 }
+interface Department {
+  id: string;
+  name: string;
+  code: string;
+}
 
 export default function TimetableGeneratorPage() {
   const { accessToken } = useAuth();
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [departmentId, setDepartmentId] = useState('');
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    apiFetch<Department[]>('/departments', { token: accessToken })
+      .then(setDepartments)
+      .catch(() => {
+        /* non-fatal — dropdown just stays empty */
+      });
+  }, [accessToken]);
 
   async function handleGenerate() {
     setError(null);
@@ -38,12 +53,18 @@ export default function TimetableGeneratorPage() {
       <h1 className="mb-4 text-xl font-semibold">Timetable Generator</h1>
 
       <div className="mb-4 flex max-w-md gap-2">
-        <input
+        <select
           value={departmentId}
           onChange={(e) => setDepartmentId(e.target.value)}
-          placeholder="Department ID"
           className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
+        >
+          <option value="">Select department...</option>
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name} ({d.code})
+            </option>
+          ))}
+        </select>
         <button
           onClick={handleGenerate}
           disabled={isRunning || !departmentId}
@@ -76,9 +97,7 @@ export default function TimetableGeneratorPage() {
           )}
         </div>
       )}
-      {/* TODO: replace the raw department-id text input with a real dropdown
-          once GET /departments exists, and resolve unplaced IDs to course
-          names/codes instead of raw UUIDs */}
+      {/* TODO: resolve unplaced section IDs to course names/codes instead of raw UUIDs */}
     </main>
   );
 }

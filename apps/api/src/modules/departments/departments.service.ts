@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { prisma } from '@cust/database';
 
 @Injectable()
 export class DepartmentsService {
-  // TODO: implement business logic
+  findAll() {
+    return prisma.department.findMany({ orderBy: { name: 'asc' } });
+  }
 }
