@@ -57,7 +57,8 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Complaints
 - [ ] Requests (transcript, letters, course withdraw, personal info change)
 - [ ] Feedback/QA
-- [ ] Notifications (in-app + email via BullMQ)
+- [x] Notifications: Announcement model + posting (admin/teacher) + targeted feed (ALL/DEPARTMENT/SECTION) — in-app only, email via BullMQ still TODO
+- [ ] Follow-up: teacher-facing notifications view page (same pattern as the student one, not built yet)
 
 ## 7. Polish / Deployment (not started)
 - [ ] Docker setup for api + web
@@ -66,6 +67,5 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Announcements module (posting + in-app view) — the last piece of the
-"core academic" set before moving to the remaining Tasjeel-parity modules (Enrollment, Library,
-Invoices, Complaints, Requests, Feedback, Notifications).
+**Next chunk to build:** Enrollment module (self-enrollment + enrollment schedules) — next
+item in the remaining Tasjeel-parity set.

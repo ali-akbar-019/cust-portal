@@ -31,6 +31,7 @@ model User {
   student      Student?
   teacher      Teacher?
   admin        Admin?
+  announcements Announcement[]
 }
 
 model Admin {
@@ -265,4 +266,29 @@ model Grade {
   maxMarks  Float
 
   @@unique([studentId, courseId, component])
+}
+
+// ─────────────────────────────────────────────────────────────
+// ANNOUNCEMENTS
+// ─────────────────────────────────────────────────────────────
+
+enum AnnouncementTarget {
+  ALL
+  DEPARTMENT
+  SECTION
+}
+
+model Announcement {
+  id           String             @id @default(uuid())
+  postedById   String
+  postedBy     User               @relation(fields: [postedById], references: [id])
+  title        String
+  message      String             @db.Text
+  target       AnnouncementTarget
+  departmentId String? // set when target = DEPARTMENT
+  sectionId    String? // set when target = SECTION
+  createdAt    DateTime           @default(now())
+
+  @@index([target, departmentId])
+  @@index([target, sectionId])
 }
