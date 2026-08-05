@@ -56,6 +56,7 @@ model Department {
   teachers      Teacher[]
   students      Student[]
   courses       Course[]
+  enrollmentSchedules EnrollmentSchedule[]
 }
 
 model Student {
@@ -66,6 +67,13 @@ model Student {
   departmentId String
   department   Department @relation(fields: [departmentId], references: [id])
   semester     Int
+  // NOTE: this is a single "primary section" (used for the early
+  // Timetable Engine chunk before Enrollment existed). The real,
+  // multi-course enrollment tracking is the Enrollment model below —
+  // seat counts, self-enrollment, and withdrawal all go through Enrollment,
+  // not this field. TODO: reconcile these two — likely deprecate this field
+  // once every timetable/attendance query is migrated to read through
+  // Enrollment instead.
   sectionId    String?
   section      Section?  @relation(fields: [sectionId], references: [id])
 
@@ -73,6 +81,9 @@ model Student {
   attendances   Attendance[]
   grades        Grade[]
   enrollments   Enrollment[]
+  bookReservations   BookReservation[]
+  libraryClearances  LibraryClearance[]
+  invoices           Invoice[]
 }
 
 model Teacher {
@@ -126,6 +137,20 @@ model Enrollment {
   enrolledAt DateTime @default(now())
 
   @@unique([studentId, sectionId])
+}
+
+// Admin-defined window during which students may self-enroll for a term.
+// Scoped per department since different departments may open enrollment
+// on different dates (mirrors Tasjeel's "Enrollment Schedules" feature).
+model EnrollmentSchedule {
+  id           String   @id @default(uuid())
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  term         String   // e.g. "Fall 2026"
+  startsAt     DateTime
+  endsAt       DateTime
+
+  @@index([departmentId, startsAt, endsAt])
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -250,6 +275,81 @@ model Attendance {
   status    AttendanceStatus
 
   @@unique([sectionId, studentId, date])
+}
+
+// ─────────────────────────────────────────────────────────────
+// LIBRARY
+// ─────────────────────────────────────────────────────────────
+
+model Book {
+  id               String   @id @default(uuid())
+  title            String
+  author           String
+  isbn             String   @unique
+  totalCopies      Int
+  availableCopies  Int
+
+  reservations     BookReservation[]
+}
+
+enum ReservationStatus {
+  PENDING
+  FULFILLED
+  CANCELLED
+}
+
+model BookReservation {
+  id          String            @id @default(uuid())
+  bookId      String
+  book        Book              @relation(fields: [bookId], references: [id])
+  studentId   String
+  student     Student           @relation(fields: [studentId], references: [id])
+  status      ReservationStatus @default(PENDING)
+  reservedAt  DateTime          @default(now())
+
+  @@unique([bookId, studentId, status]) // prevents duplicate pending reservations of the same book
+}
+
+enum ClearanceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LibraryClearance {
+  id           String          @id @default(uuid())
+  studentId    String
+  student      Student         @relation(fields: [studentId], references: [id])
+  status       ClearanceStatus @default(PENDING)
+  remarks      String?
+  requestedAt  DateTime        @default(now())
+  resolvedAt   DateTime?
+
+  @@unique([studentId, status]) // a student can't have two PENDING requests at once
+}
+
+// ─────────────────────────────────────────────────────────────
+// INVOICES
+// ─────────────────────────────────────────────────────────────
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+model Invoice {
+  id          String        @id @default(uuid())
+  studentId   String
+  student     Student       @relation(fields: [studentId], references: [id])
+  description String
+  amount      Float
+  dueDate     DateTime
+  status      InvoiceStatus @default(PENDING)
+  issuedAt    DateTime      @default(now())
+  paidAt      DateTime?
+
+  @@index([studentId, status])
 }
 
 // ─────────────────────────────────────────────────────────────

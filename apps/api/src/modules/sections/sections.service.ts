@@ -1,6 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { prisma } from '@cust/database';
 
 @Injectable()
 export class SectionsService {
-  // TODO: implement business logic
+  async findByDepartment(departmentId: string) {
+    const sections = await prisma.section.findMany({
+      where: { course: { departmentId } },
+      include: {
+        course: true,
+        teacher: { include: { user: { select: { email: true } } } },
+        _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } },
+      },
+    });
+    // surface remaining seats directly so the frontend doesn't have to compute it
+    return sections.map((s) => ({ ...s, seatsRemaining: s.capacity - s._count.enrollments }));
+  }
 }

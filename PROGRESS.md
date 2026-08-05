@@ -50,10 +50,12 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Student: breakdown view + GPA calculation (credit-hour-weighted)
 - [ ] CUST's real grading scale/policy not yet verified — using a standard 4.0-scale mapping as a placeholder (flagged in grade-scale.util.ts)
 
-## 6. Remaining Tasjeel-parity modules (not started)
-- [ ] Enrollment (self-enrollment, enrollment schedules)
-- [ ] Library (clearance, book reservation)
-- [ ] Invoices
+## 6. Remaining Tasjeel-parity modules (in progress)
+- [x] Enrollment — EnrollmentSchedule model (admin-defined open window per department), self-enrollment with 3 gates (window open, seat available, not already enrolled), withdraw, seat-count-aware section browsing, student enrollment page
+  - [ ] Follow-up: admin UI to create enrollment schedules (backend endpoint exists, POST /enrollment/schedules — no form yet)
+- [x] Library — Book/BookReservation/LibraryClearance models, reserve (decrements copies, transactional) + cancel (returns copy), clearance request/approve/reject flow, student browse+reserve+request-clearance page, admin pending-clearances approval page
+  - [ ] Follow-up: no Book rows in seed.ts yet — library page will show empty until books are added (via Prisma Studio or a seed update)
+- [x] Invoices — Invoice model, admin creation, student list (lazy PENDING->OVERDUE flip on read), stubbed "pay" action (no real payment gateway — flagged in code), admin + student pages
 - [ ] Complaints
 - [ ] Requests (transcript, letters, course withdraw, personal info change)
 - [ ] Feedback/QA
@@ -67,5 +69,4 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Enrollment module (self-enrollment + enrollment schedules) — next
-item in the remaining Tasjeel-parity set.
+**Next chunk to build:** Complaints module — next item in the remaining Tasjeel-parity set.
