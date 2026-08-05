@@ -45,9 +45,10 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Teacher: mark attendance per section per date (bulk UI — roster with P/A toggles, re-marking overwrites via upsert)
 - [x] Student: view % with low-attendance alert (below 75% threshold)
 
-## 5. Grades (not started)
-- [ ] Teacher: upload component-wise marks
-- [ ] Student: breakdown view + GPA calculation
+## 5. Grades (done for v1)
+- [x] Teacher: upload component-wise marks (upsert — re-entering a component updates it, no duplicates)
+- [x] Student: breakdown view + GPA calculation (credit-hour-weighted)
+- [ ] CUST's real grading scale/policy not yet verified — using a standard 4.0-scale mapping as a placeholder (flagged in grade-scale.util.ts)
 
 ## 6. Remaining Tasjeel-parity modules (not started)
 - [ ] Enrollment (self-enrollment, enrollment schedules)
@@ -65,5 +66,6 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Grades module — teacher uploads component-wise marks,
-student sees a breakdown + computed GPA.
+**Next chunk to build:** Announcements module (posting + in-app view) — the last piece of the
+"core academic" set before moving to the remaining Tasjeel-parity modules (Enrollment, Library,
+Invoices, Complaints, Requests, Feedback, Notifications).
