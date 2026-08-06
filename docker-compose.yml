@@ -1,0 +1,47 @@
+# Runs the full stack with one command: `docker compose up --build`
+# Includes a MySQL container so this works even without XAMPP running —
+# useful for deployment-like testing or if you don't want XAMPP open.
+# For day-to-day local dev with XAMPP's MySQL instead, just run `pnpm dev`
+# and point DATABASE_URL at XAMPP's instance (see apps/api/.env.example).
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cust_portal
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      DATABASE_URL: mysql://root:root@mysql:3306/cust_portal
+      JWT_SECRET: change-me-access-secret
+      JWT_REFRESH_SECRET: change-me-refresh-secret
+      PORT: 4000
+    ports:
+      - '4000:4000'
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    ports:
+      - '3000:3000'
+
+volumes:
+  mysql_data:

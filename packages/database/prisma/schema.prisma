@@ -84,6 +84,9 @@ model Student {
   bookReservations   BookReservation[]
   libraryClearances  LibraryClearance[]
   invoices           Invoice[]
+  complaints         Complaint[]
+  requests           Request[]
+  feedback           Feedback[]
 }
 
 model Teacher {
@@ -125,6 +128,7 @@ model Section {
   assignments     Assignment[]
   attendanceDays  Attendance[]
   enrollments     Enrollment[]
+  feedback        Feedback[]
 }
 
 model Enrollment {
@@ -350,6 +354,80 @@ model Invoice {
   paidAt      DateTime?
 
   @@index([studentId, status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPLAINTS
+// ─────────────────────────────────────────────────────────────
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+model Complaint {
+  id          String          @id @default(uuid())
+  studentId   String
+  student     Student         @relation(fields: [studentId], references: [id])
+  subject     String
+  description String          @db.Text
+  status      ComplaintStatus @default(OPEN)
+  response    String?         @db.Text
+  createdAt   DateTime        @default(now())
+  resolvedAt  DateTime?
+
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────
+// REQUESTS (transcripts, letters, course withdraw, info change, general)
+// ─────────────────────────────────────────────────────────────
+
+enum RequestType {
+  TRANSCRIPT
+  LETTER
+  COURSE_WITHDRAW
+  PERSONAL_INFO_CHANGE
+  GENERAL
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Request {
+  id           String        @id @default(uuid())
+  studentId    String
+  student      Student       @relation(fields: [studentId], references: [id])
+  type         RequestType
+  details      String        @db.Text // free-text specifics (e.g. which letter, what info to change)
+  sectionId    String?       // only set for COURSE_WITHDRAW — the section being dropped
+  status       RequestStatus @default(PENDING)
+  adminRemarks String?
+  createdAt    DateTime      @default(now())
+  resolvedAt   DateTime?
+
+  @@index([status, type])
+}
+
+// ─────────────────────────────────────────────────────────────
+// FEEDBACK (QA Feedback — students rate a section/teacher)
+// ─────────────────────────────────────────────────────────────
+
+model Feedback {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  sectionId   String
+  section     Section  @relation(fields: [sectionId], references: [id])
+  rating      Int      // 1-5
+  comments    String?  @db.Text
+  submittedAt DateTime @default(now())
+
+  @@unique([studentId, sectionId]) // one feedback per student per section
 }
 
 // ─────────────────────────────────────────────────────────────
