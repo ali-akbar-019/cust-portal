@@ -57,7 +57,8 @@ Legend: [x] done · [~] in progress · [ ] not started
   - [ ] Follow-up: no Book rows in seed.ts yet — library page will show empty until books are added (via Prisma Studio or a seed update)
 - [x] Invoices — Invoice model, admin creation, student list (lazy PENDING->OVERDUE flip on read), stubbed "pay" action (no real payment gateway — flagged in code), admin + student pages
 - [x] Complaints — Complaint model, student file/view-own, admin triage list (OPEN sorted first) + status update + response, student and admin pages
-- [ ] Requests (transcript, letters, course withdraw, personal info change)
+- [x] Requests (transcript, letters, course withdraw, personal info change) — one flexible Request model covering all sub-types, COURSE_WITHDRAW has a real side effect (flips Enrollment to WITHDRAWN on approval), student filing/history page, admin triage page
+  - [ ] Follow-up: TRANSCRIPT/LETTER requests are just status+remarks for now — no actual PDF generation yet (would hook into the pdf skill/service later)
 - [ ] Feedback/QA
 - [x] Notifications: Announcement model + posting (admin/teacher) + targeted feed (ALL/DEPARTMENT/SECTION) — in-app only, email via BullMQ still TODO
 - [ ] Follow-up: teacher-facing notifications view page (same pattern as the student one, not built yet)
@@ -69,5 +70,6 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Requests module (transcripts, letters, course withdraw, personal info
-change) — next item in the remaining Tasjeel-parity set.
+**Next chunk to build:** Feedback/QA module — last item in the remaining Tasjeel-parity set
+(Notifications core is already done from the Announcements chunk; email delivery via BullMQ is a
+separate polish-phase item, not blocking).
