@@ -71,7 +71,8 @@ Legend: [x] done · [~] in progress · [ ] not started
 
 ## 8. Post-launch fixes
 - [x] GET /users/me — resolves the logged-in user's studentId/teacherId/sectionId/departmentId from the JWT. AuthContext now calls this right after login/rehydration and exposes it as `profile`; every page that previously used a PLACEHOLDER_*_ID (teacher timetable, student attendance/timetable/invoices/results/requests/complaints) now pulls the real id from `profile`.
-- [ ] Follow-up: several endpoints still trust a client-supplied studentId in the URL (e.g. GET /students/:id, /attendance/student/:id) instead of verifying it matches the caller's own JWT — noted inline as TODOs when those controllers were built. Worth hardening before this handles real student data: compare the requested id against `profile.studentId` server-side (via /users/me's same resolution) and reject mismatches for STUDENT-role callers.
+- [x] Fixed a real bug found while wiring the above: several STUDENT-only write endpoints (assignment submit, self-enrollment, withdraw, library reserve/cancel/clearance, requests create, complaints create, feedback submit, invoice pay) were passing `user.sub` (the User id) directly as the studentId — but every one of those tables has a foreign key to Student.id, not User.id. Added `resolveStudentId()` (common/guards/resolve-student-id.util.ts) which looks up the real Student.id from the JWT's user id, and wired it into all of the above.
+- [x] Hardened server-side authorization: added `ensureOwnStudentOrElevated()` (common/guards/self-or-elevated.util.ts) and wired it into every GET endpoint that takes a :studentId URL param (students, attendance, grades, invoices, requests, complaints, library reservations, feedback) — a STUDENT caller now gets a 403 if the id in the URL isn't their own; ADMIN/TEACHER pass through unaffected.
 
 ---
 **Next chunk to build:** CI (typecheck + lint on push via GitHub Actions).

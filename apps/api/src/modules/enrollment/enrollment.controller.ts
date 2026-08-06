@@ -6,6 +6,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { resolveStudentId } from '../../common/guards/resolve-student-id.util';
+import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('enrollment')
@@ -27,21 +29,22 @@ export class EnrollmentController {
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post()
-  selfEnroll(@Body() dto: SelfEnrollDto, @CurrentUser() user: AuthenticatedUser) {
-    // TODO: same note as elsewhere — user.sub is the User id, not the
-    // Student id, until a User->Student resolver helper exists
-    return this.enrollmentService.selfEnroll(user.sub, dto.sectionId);
+  async selfEnroll(@Body() dto: SelfEnrollDto, @CurrentUser() user: AuthenticatedUser) {
+    const studentId = await resolveStudentId(user);
+    return this.enrollmentService.selfEnroll(studentId, dto.sectionId);
   }
 
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post(':sectionId/withdraw')
-  withdraw(@Param('sectionId') sectionId: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.enrollmentService.withdraw(user.sub, sectionId);
+  async withdraw(@Param('sectionId') sectionId: string, @CurrentUser() user: AuthenticatedUser) {
+    const studentId = await resolveStudentId(user);
+    return this.enrollmentService.withdraw(studentId, sectionId);
   }
 
   @Get('student/:studentId')
-  listMine(@Param('studentId') studentId: string) {
+  async listMine(@Param('studentId') studentId: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, studentId);
     return this.enrollmentService.listMyEnrollments(studentId);
   }
 }

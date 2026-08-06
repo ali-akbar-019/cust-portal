@@ -6,6 +6,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated.util';
+import { resolveStudentId } from '../../common/guards/resolve-student-id.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('complaints')
@@ -15,12 +17,14 @@ export class ComplaintsController {
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post()
-  create(@Body() dto: CreateComplaintDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.complaintsService.create(user.sub, dto);
+  async create(@Body() dto: CreateComplaintDto, @CurrentUser() user: AuthenticatedUser) {
+    const studentId = await resolveStudentId(user);
+    return this.complaintsService.create(studentId, dto);
   }
 
   @Get('mine/:studentId')
-  listMine(@Param('studentId') studentId: string) {
+  async listMine(@Param('studentId') studentId: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, studentId);
     return this.complaintsService.listMine(studentId);
   }
 

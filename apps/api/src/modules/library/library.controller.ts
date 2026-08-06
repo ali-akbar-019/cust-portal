@@ -6,6 +6,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated.util';
+import { resolveStudentId } from '../../common/guards/resolve-student-id.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('library')
@@ -20,27 +22,31 @@ export class LibraryController {
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post('reservations')
-  reserve(@Body() dto: ReserveBookDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.libraryService.reserveBook(user.sub, dto.bookId);
+  async reserve(@Body() dto: ReserveBookDto, @CurrentUser() user: AuthenticatedUser) {
+    const studentId = await resolveStudentId(user);
+    return this.libraryService.reserveBook(studentId, dto.bookId);
   }
 
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post('reservations/:id/cancel')
-  cancel(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.libraryService.cancelReservation(id, user.sub);
+  async cancel(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const studentId = await resolveStudentId(user);
+    return this.libraryService.cancelReservation(id, studentId);
   }
 
   @Get('reservations/mine/:studentId')
-  listMine(@Param('studentId') studentId: string) {
+  async listMine(@Param('studentId') studentId: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, studentId);
     return this.libraryService.listMyReservations(studentId);
   }
 
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post('clearance')
-  requestClearance(@CurrentUser() user: AuthenticatedUser) {
-    return this.libraryService.requestClearance(user.sub);
+  async requestClearance(@CurrentUser() user: AuthenticatedUser) {
+    const studentId = await resolveStudentId(user);
+    return this.libraryService.requestClearance(studentId);
   }
 
   @UseGuards(RolesGuard)

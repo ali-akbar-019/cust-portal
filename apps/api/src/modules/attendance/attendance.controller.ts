@@ -4,6 +4,8 @@ import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('attendance')
@@ -25,9 +27,12 @@ export class AttendanceController {
   }
 
   @Get('student/:studentId')
-  getStudentAttendance(@Param('studentId') studentId: string, @Query('sectionId') sectionId?: string) {
-    // TODO: once req.user is threaded through, restrict a STUDENT caller to
-    // only ever fetching their own studentId here (same note as students.controller.ts)
+  async getStudentAttendance(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('sectionId') sectionId?: string,
+  ) {
+    await ensureOwnStudentOrElevated(user, studentId);
     return this.attendanceService.getStudentAttendance(studentId, sectionId);
   }
 }

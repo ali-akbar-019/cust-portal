@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated.util';
+import { resolveStudentId } from '../../common/guards/resolve-student-id.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('feedback')
@@ -14,8 +16,9 @@ export class FeedbackController {
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post()
-  submit(@Body() dto: SubmitFeedbackDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.feedbackService.submit(user.sub, dto);
+  async submit(@Body() dto: SubmitFeedbackDto, @CurrentUser() user: AuthenticatedUser) {
+    const studentId = await resolveStudentId(user);
+    return this.feedbackService.submit(studentId, dto);
   }
 
   @UseGuards(RolesGuard)
@@ -26,7 +29,8 @@ export class FeedbackController {
   }
 
   @Get('mine/:studentId')
-  getMine(@Param('studentId') studentId: string) {
+  async getMine(@Param('studentId') studentId: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, studentId);
     return this.feedbackService.getMySubmissions(studentId);
   }
 }

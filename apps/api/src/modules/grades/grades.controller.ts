@@ -4,6 +4,8 @@ import { UpsertGradeDto } from './dto/upsert-grade.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('grades')
@@ -18,8 +20,8 @@ export class GradesController {
   }
 
   @Get('student/:studentId')
-  getBreakdown(@Param('studentId') studentId: string) {
-    // TODO: same restrict-to-self note as attendance/students controllers
+  async getBreakdown(@Param('studentId') studentId: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, studentId);
     return this.gradesService.getStudentBreakdown(studentId);
   }
 }

@@ -4,6 +4,8 @@ import { CreateStudentDto } from './dto/create-student.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('students')
@@ -18,14 +20,14 @@ export class StudentsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    // TODO: once req.user is wired here, restrict a STUDENT role to only
-    // fetching their own id (compare req.user.sub's linked studentId)
+  async findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, id);
     return this.studentsService.findById(id);
   }
 
   @Get(':id/timetable')
-  getTimetable(@Param('id') id: string) {
+  async getTimetable(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, id);
     return this.studentsService.getTimetable(id);
   }
 

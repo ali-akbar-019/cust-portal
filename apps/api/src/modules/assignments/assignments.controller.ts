@@ -19,6 +19,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { resolveStudentId } from '../../common/guards/resolve-student-id.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('assignments')
@@ -66,14 +67,13 @@ export class AssignmentsController {
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post(':id/submit')
-  submit(
+  async submit(
     @Param('id') assignmentId: string,
     @Body() dto: CreateSubmissionDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    // TODO: resolve user.sub (User id) -> Student id once that lookup helper exists;
-    // for now this assumes the caller passes the student profile id correctly upstream
-    return this.assignmentsService.submit(assignmentId, user.sub, dto);
+    const studentId = await resolveStudentId(user);
+    return this.assignmentsService.submit(assignmentId, studentId, dto);
   }
 
   @UseGuards(RolesGuard)

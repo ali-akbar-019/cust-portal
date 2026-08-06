@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated.util';
+import { resolveStudentId } from '../../common/guards/resolve-student-id.util';
 
 @UseGuards(JwtAuthGuard)
 @Controller('invoices')
@@ -19,14 +21,16 @@ export class InvoicesController {
   }
 
   @Get('student/:studentId')
-  listForStudent(@Param('studentId') studentId: string) {
+  async listForStudent(@Param('studentId') studentId: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, studentId);
     return this.invoicesService.listForStudent(studentId);
   }
 
   @UseGuards(RolesGuard)
   @Roles('STUDENT')
   @Post(':id/pay')
-  pay(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.invoicesService.pay(id, user.sub);
+  async pay(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    const studentId = await resolveStudentId(user);
+    return this.invoicesService.pay(id, studentId);
   }
 }
