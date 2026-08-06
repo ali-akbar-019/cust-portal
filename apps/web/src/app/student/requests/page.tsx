@@ -30,7 +30,7 @@ const TYPE_LABEL: Record<RequestType, string> = {
 };
 
 export default function StudentRequestsPage() {
-  const { accessToken } = useAuth();
+  const { accessToken, profile } = useAuth();
   const [type, setType] = useState<RequestType>('GENERAL');
   const [details, setDetails] = useState('');
   const [sectionId, setSectionId] = useState('');
@@ -38,14 +38,13 @@ export default function StudentRequestsPage() {
   const [error, setError] = useState<string | null>(null);
 
   function load() {
-    if (!accessToken) return;
-    // TODO: derive the student's own id from /students/me once that endpoint exists
-    apiFetch<RequestView[]>('/requests/mine/PLACEHOLDER_STUDENT_ID', { token: accessToken })
+    if (!accessToken || !profile?.studentId) return;
+    apiFetch<RequestView[]>(`/requests/mine/${profile.studentId}`, { token: accessToken })
       .then(setRequests)
       .catch(() => {});
   }
 
-  useEffect(load, [accessToken]);
+  useEffect(load, [accessToken, profile]);
 
   async function handleSubmit() {
     setError(null);

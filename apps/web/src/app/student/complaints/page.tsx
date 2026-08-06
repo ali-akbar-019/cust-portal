@@ -20,21 +20,20 @@ const STATUS_STYLE: Record<ComplaintView['status'], string> = {
 };
 
 export default function StudentComplaintsPage() {
-  const { accessToken } = useAuth();
+  const { accessToken, profile } = useAuth();
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [complaints, setComplaints] = useState<ComplaintView[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   function load() {
-    if (!accessToken) return;
-    // TODO: derive the student's own id from /students/me once that endpoint exists
-    apiFetch<ComplaintView[]>('/complaints/mine/PLACEHOLDER_STUDENT_ID', { token: accessToken })
+    if (!accessToken || !profile?.studentId) return;
+    apiFetch<ComplaintView[]>(`/complaints/mine/${profile.studentId}`, { token: accessToken })
       .then(setComplaints)
       .catch(() => {});
   }
 
-  useEffect(load, [accessToken]);
+  useEffect(load, [accessToken, profile]);
 
   async function handleSubmit() {
     setError(null);

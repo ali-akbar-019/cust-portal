@@ -19,19 +19,18 @@ const STATUS_STYLE: Record<InvoiceView['status'], string> = {
 };
 
 export default function StudentInvoicesPage() {
-  const { accessToken } = useAuth();
+  const { accessToken, profile } = useAuth();
   const [invoices, setInvoices] = useState<InvoiceView[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   function load() {
-    if (!accessToken) return;
-    // TODO: derive the student's own id from /students/me once that endpoint exists
-    apiFetch<InvoiceView[]>('/invoices/student/PLACEHOLDER_STUDENT_ID', { token: accessToken })
+    if (!accessToken || !profile?.studentId) return;
+    apiFetch<InvoiceView[]>(`/invoices/student/${profile.studentId}`, { token: accessToken })
       .then(setInvoices)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load invoices'));
   }
 
-  useEffect(load, [accessToken]);
+  useEffect(load, [accessToken, profile]);
 
   async function handlePay(id: string) {
     setError(null);

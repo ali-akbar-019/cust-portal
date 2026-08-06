@@ -64,12 +64,14 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Follow-up: teacher-facing notifications view page (same pattern as the student one, not built yet)
 
 ## 7. Polish / Deployment (not started)
-- [ ] Docker setup for api + web
+- [x] Docker setup for api + web (multi-stage Dockerfiles, docker-compose with a MySQL container for deployment-like testing — day-to-day dev can still just use `pnpm dev` + XAMPP)
 - [ ] CI (typecheck + lint on push)
 - [ ] Deploy: web -> Vercel, api -> Railway/Render, DB -> managed MySQL (Railway/PlanetScale)
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
+## 8. Post-launch fixes
+- [x] GET /users/me — resolves the logged-in user's studentId/teacherId/sectionId/departmentId from the JWT. AuthContext now calls this right after login/rehydration and exposes it as `profile`; every page that previously used a PLACEHOLDER_*_ID (teacher timetable, student attendance/timetable/invoices/results/requests/complaints) now pulls the real id from `profile`.
+- [ ] Follow-up: several endpoints still trust a client-supplied studentId in the URL (e.g. GET /students/:id, /attendance/student/:id) instead of verifying it matches the caller's own JWT — noted inline as TODOs when those controllers were built. Worth hardening before this handles real student data: compare the requested id against `profile.studentId` server-side (via /users/me's same resolution) and reject mismatches for STUDENT-role callers.
+
 ---
-**Next chunk to build:** All core academic + Tasjeel-parity modules are now built (backend +
-at least a basic frontend page each). Moving into Phase 7 (Polish/Deployment) — starting with
-Docker setup for the api and web apps.
+**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions).

@@ -14,17 +14,16 @@ interface AttendanceSummary {
 }
 
 export default function StudentAttendancePage() {
-  const { accessToken } = useAuth();
+  const { accessToken, profile } = useAuth();
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
-    // TODO: derive the student's own id from /students/me once that endpoint exists
-    apiFetch<AttendanceSummary>('/attendance/student/PLACEHOLDER_STUDENT_ID', { token: accessToken })
+    if (!accessToken || !profile?.studentId) return;
+    apiFetch<AttendanceSummary>(`/attendance/student/${profile.studentId}`, { token: accessToken })
       .then(setSummary)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load attendance'));
-  }, [accessToken]);
+  }, [accessToken, profile]);
 
   if (error) return <main className="p-8 text-sm text-red-600">{error}</main>;
   if (!summary) return <main className="p-8 text-sm text-slate-500">Loading...</main>;

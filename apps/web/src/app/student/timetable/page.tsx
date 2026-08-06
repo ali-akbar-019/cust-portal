@@ -16,20 +16,18 @@ interface SlotView {
 const DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 export default function StudentTimetablePage() {
-  const { accessToken } = useAuth();
+  const { accessToken, profile } = useAuth();
   const [slots, setSlots] = useState<SlotView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!accessToken) return;
-    // TODO: derive the student's own sectionId from /students/me once that
-    // endpoint exists, instead of assuming it here
-    apiFetch<SlotView[]>('/timetable/section/PLACEHOLDER_SECTION_ID', { token: accessToken })
+    if (!accessToken || !profile?.sectionId) return;
+    apiFetch<SlotView[]>(`/timetable/section/${profile.sectionId}`, { token: accessToken })
       .then(setSlots)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load timetable'))
       .finally(() => setIsLoading(false));
-  }, [accessToken]);
+  }, [accessToken, profile]);
 
   if (isLoading) return <main className="p-8 text-sm text-slate-500">Loading timetable...</main>;
   if (error) return <main className="p-8 text-sm text-red-600">{error}</main>;

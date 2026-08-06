@@ -21,17 +21,16 @@ interface Breakdown {
 }
 
 export default function StudentResultsPage() {
-  const { accessToken } = useAuth();
+  const { accessToken, profile } = useAuth();
   const [data, setData] = useState<Breakdown | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!accessToken) return;
-    // TODO: derive the student's own id from /students/me once that endpoint exists
-    apiFetch<Breakdown>('/grades/student/PLACEHOLDER_STUDENT_ID', { token: accessToken })
+    if (!accessToken || !profile?.studentId) return;
+    apiFetch<Breakdown>(`/grades/student/${profile.studentId}`, { token: accessToken })
       .then(setData)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load results'));
-  }, [accessToken]);
+  }, [accessToken, profile]);
 
   if (error) return <main className="p-8 text-sm text-red-600">{error}</main>;
   if (!data) return <main className="p-8 text-sm text-slate-500">Loading...</main>;
