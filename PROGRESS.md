@@ -64,10 +64,12 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Follow-up: teacher-facing notifications view page (same pattern as the student one, not built yet)
 
 ## 7. Polish / Deployment (not started)
-- [x] Docker setup for api + web (multi-stage Dockerfiles, docker-compose with a MySQL container for deployment-like testing — day-to-day dev can still just use `pnpm dev` + XAMPP)
+- [ ] Docker setup for api + web
 - [ ] CI (typecheck + lint on push)
 - [ ] Deploy: web -> Vercel, api -> Railway/Render, DB -> managed MySQL (Railway/PlanetScale)
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions).
+**Next chunk to build:** All core academic + Tasjeel-parity modules are now built (backend +
+at least a basic frontend page each). Moving into Phase 7 (Polish/Deployment) — starting with
+Docker setup for the api and web apps.
