@@ -50,7 +50,7 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Student: breakdown view + GPA calculation (credit-hour-weighted)
 - [ ] CUST's real grading scale/policy not yet verified — using a standard 4.0-scale mapping as a placeholder (flagged in grade-scale.util.ts)
 
-## 6. Remaining Tasjeel-parity modules (in progress)
+## 6. Remaining Tasjeel-parity modules (done for v1 — all core modules built)
 - [x] Enrollment — EnrollmentSchedule model (admin-defined open window per department), self-enrollment with 3 gates (window open, seat available, not already enrolled), withdraw, seat-count-aware section browsing, student enrollment page
   - [ ] Follow-up: admin UI to create enrollment schedules (backend endpoint exists, POST /enrollment/schedules — no form yet)
 - [x] Library — Book/BookReservation/LibraryClearance models, reserve (decrements copies, transactional) + cancel (returns copy), clearance request/approve/reject flow, student browse+reserve+request-clearance page, admin pending-clearances approval page
@@ -59,17 +59,15 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Complaints — Complaint model, student file/view-own, admin triage list (OPEN sorted first) + status update + response, student and admin pages
 - [x] Requests (transcript, letters, course withdraw, personal info change) — one flexible Request model covering all sub-types, COURSE_WITHDRAW has a real side effect (flips Enrollment to WITHDRAWN on approval), student filing/history page, admin triage page
   - [ ] Follow-up: TRANSCRIPT/LETTER requests are just status+remarks for now — no actual PDF generation yet (would hook into the pdf skill/service later)
-- [ ] Feedback/QA
+- [x] Feedback/QA — Feedback model, upsert submission (1 per student per section), anonymized aggregate view for teachers (average + comments, never traced to a student), student submission page, teacher aggregate view page
 - [x] Notifications: Announcement model + posting (admin/teacher) + targeted feed (ALL/DEPARTMENT/SECTION) — in-app only, email via BullMQ still TODO
 - [ ] Follow-up: teacher-facing notifications view page (same pattern as the student one, not built yet)
 
 ## 7. Polish / Deployment (not started)
-- [ ] Docker setup for api + web
+- [x] Docker setup for api + web (multi-stage Dockerfiles, docker-compose with a MySQL container for deployment-like testing — day-to-day dev can still just use `pnpm dev` + XAMPP)
 - [ ] CI (typecheck + lint on push)
 - [ ] Deploy: web -> Vercel, api -> Railway/Render, DB -> managed MySQL (Railway/PlanetScale)
 - [ ] Seed realistic CUST data (real block/room list, real department timing windows)
 
 ---
-**Next chunk to build:** Feedback/QA module — last item in the remaining Tasjeel-parity set
-(Notifications core is already done from the Announcements chunk; email delivery via BullMQ is a
-separate polish-phase item, not blocking).
+**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions).

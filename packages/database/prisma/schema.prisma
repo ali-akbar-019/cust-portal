@@ -86,6 +86,7 @@ model Student {
   invoices           Invoice[]
   complaints         Complaint[]
   requests           Request[]
+  feedback           Feedback[]
 }
 
 model Teacher {
@@ -127,6 +128,7 @@ model Section {
   assignments     Assignment[]
   attendanceDays  Attendance[]
   enrollments     Enrollment[]
+  feedback        Feedback[]
 }
 
 model Enrollment {
@@ -409,6 +411,23 @@ model Request {
   resolvedAt   DateTime?
 
   @@index([status, type])
+}
+
+// ─────────────────────────────────────────────────────────────
+// FEEDBACK (QA Feedback — students rate a section/teacher)
+// ─────────────────────────────────────────────────────────────
+
+model Feedback {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  sectionId   String
+  section     Section  @relation(fields: [sectionId], references: [id])
+  rating      Int      // 1-5
+  comments    String?  @db.Text
+  submittedAt DateTime @default(now())
+
+  @@unique([studentId, sectionId]) // one feedback per student per section
 }
 
 // ─────────────────────────────────────────────────────────────
