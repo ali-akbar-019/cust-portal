@@ -76,5 +76,10 @@ Legend: [x] done · [~] in progress · [ ] not started
 
 - [x] Fixed a crash-on-startup bug: `@cust/database` and `@cust/shared-types` had `main` pointing straight at their raw `src/index.ts` — pnpm workspace-links them into node_modules, so Node tried to `require()` uncompiled TypeScript directly at runtime and crashed on the first `as` cast it hit ("SyntaxError: Unexpected identifier 'as'"). Both packages now have a real `tsc` build step (`main`/`types` point at `dist/`), and `turbo.json`'s `dev` task now `dependsOn: ["^build"]` so Turborepo builds these packages automatically before starting the apps — no extra manual step needed beyond `pnpm install` + `pnpm dev`.
 
+## 9. Navigation fix
+- [x] Fixed missing routes: `/admin/dashboard` and `/teacher/dashboard` were referenced by the post-login redirect but never actually built — added both, plus a completely missing Assignments frontend (backend existed since that chunk, but no page was ever built for either student or teacher).
+- [x] Added `admin/layout.tsx`, `teacher/layout.tsx`, `student/layout.tsx` — each with a real sidebar nav linking every page for that role, plus a logout button. Previously every page was only reachable by typing its exact URL; there was no in-app navigation at all.
+- [x] Verified programmatically: every nav link across all three layouts + both dashboards resolves to a real page.tsx (26/26).
+
 ---
 **Next chunk to build:** CI (typecheck + lint on push via GitHub Actions).
