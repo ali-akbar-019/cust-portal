@@ -2,7 +2,7 @@
 
 export function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
+  return (h ?? 0) * 60 + (m ?? 0);
 }
 
 export function overlaps(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {

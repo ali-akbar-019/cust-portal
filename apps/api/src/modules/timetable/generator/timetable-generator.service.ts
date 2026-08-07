@@ -112,6 +112,7 @@ export class TimetableGeneratorService {
   ): boolean {
     if (index === sections.length) return true;
     const section = sections[index];
+    if (!section) return true; // out of bounds guard, should never hit given the index check above
 
     const feasibleRooms = rooms.filter(
       (r) => r.capacity >= section.capacity && (section.requiresLab ? r.type === 'LAB' : true),
