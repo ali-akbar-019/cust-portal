@@ -81,5 +81,10 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Added `admin/layout.tsx`, `teacher/layout.tsx`, `student/layout.tsx` — each with a real sidebar nav linking every page for that role, plus a logout button. Previously every page was only reachable by typing its exact URL; there was no in-app navigation at all.
 - [x] Verified programmatically: every nav link across all three layouts + both dashboards resolves to a real page.tsx (26/26).
 
+## 10. Comprehensive seed data
+- [x] Rewrote `packages/database/prisma/seed.ts` from a minimal 3-user seed into a full realistic dataset: 1 admin, 6 teachers (2 per department), 18 students (6 per department across SE/CS/EE, mixed semesters), 12 courses with sections for Fall 2026, enrollments (each student enrolled in every section in their department), an open EnrollmentSchedule per department (so self-enrollment is testable immediately), auto-placed timetable slots (simple non-clashing greedy placement per department, respects room capacity/type and teacher/section conflicts), ~21 weekdays of attendance per enrollment (~85% present), 3 grade components per enrollment, 1 assignment per section with a sample submission, 2 invoices per student (one paid, one pending/overdue), a 10-book library catalog with a few reservations and one pending clearance request, 3 announcements (ALL/DEPARTMENT/SECTION), 2 complaints, 2 requests (including a course-withdraw), and feedback entries.
+- [x] `admin@cust.edu.pk` / `teacher@cust.edu.pk` / `student@cust.edu.pk` (all in SE) are preserved as the primary accounts Ali already has credentials for — the rest of the seeded users follow a predictable email pattern per department.
+- [x] Script is idempotent (safe to re-run — uses upsert or findFirst-then-create checks throughout) so `npx prisma db seed` can be run again without duplicating data.
+
 ---
 **Next chunk to build:** CI (typecheck + lint on push via GitHub Actions).
