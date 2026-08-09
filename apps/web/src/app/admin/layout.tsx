@@ -2,6 +2,7 @@ import { RoleLayout } from '@/components/shared/role-layout';
 
 const ADMIN_NAV = [
   { href: '/admin/dashboard', label: 'Dashboard' },
+  { href: '/admin/departments', label: 'Departments' },
   { href: '/admin/blocks', label: 'Blocks & Rooms' },
   { href: '/admin/timetable-generator', label: 'Timetable Generator' },
   { href: '/admin/users', label: 'Manage Users' },
@@ -14,7 +15,7 @@ const ADMIN_NAV = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RoleLayout title="Admin" items={ADMIN_NAV}>
+    <RoleLayout title="Admin" items={ADMIN_NAV} notificationsHref="/admin/notifications">
       {children}
     </RoleLayout>
   );

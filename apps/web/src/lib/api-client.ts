@@ -1,5 +1,16 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
+// The origin part of the API (uploads are served at the root, not under
+// /api/v1), used to turn relative file paths like /uploads/foo.pdf that the
+// backend returns into links that actually work from the web origin.
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+export function absoluteFileUrl(path?: string | null): string {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_ORIGIN}${path}`;
+}
+
 interface RequestOptions extends RequestInit {
   token?: string | null;
 }

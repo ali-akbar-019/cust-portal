@@ -40,7 +40,7 @@ export class UsersService {
         id: true,
         email: true,
         role: true,
-        student: { select: { id: true, sectionId: true, departmentId: true, enrollmentNo: true } },
+        student: { select: { id: true, sectionId: true, departmentId: true, enrollmentNo: true, semester: true } },
         teacher: { select: { id: true, departmentId: true } },
       },
     });
@@ -53,6 +53,7 @@ export class UsersService {
       studentId: user.student?.id ?? null,
       sectionId: user.student?.sectionId ?? null,
       enrollmentNo: user.student?.enrollmentNo ?? null,
+      semester: user.student?.semester ?? null,
       teacherId: user.teacher?.id ?? null,
       departmentId: user.student?.departmentId ?? user.teacher?.departmentId ?? null,
     };

@@ -61,7 +61,7 @@ Legend: [x] done · [~] in progress · [ ] not started
   - [ ] Follow-up: TRANSCRIPT/LETTER requests are just status+remarks for now — no actual PDF generation yet (would hook into the pdf skill/service later)
 - [x] Feedback/QA — Feedback model, upsert submission (1 per student per section), anonymized aggregate view for teachers (average + comments, never traced to a student), student submission page, teacher aggregate view page
 - [x] Notifications: Announcement model + posting (admin/teacher) + targeted feed (ALL/DEPARTMENT/SECTION) — in-app only, email via BullMQ still TODO
-- [ ] Follow-up: teacher-facing notifications view page (same pattern as the student one, not built yet)
+- [x] Follow-up: teacher-facing notifications view page (built in round 16 alongside a librarian one, plus the site-wide notification bell)
 
 ## 7. Polish / Deployment (not started)
 - [x] Docker setup for api + web (multi-stage Dockerfiles, docker-compose with a MySQL container for deployment-like testing — day-to-day dev can still just use `pnpm dev` + XAMPP)
@@ -110,7 +110,7 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Signature element: `.ribbon-badge` — a notched banner shape (echoes the crest's "CUST" ribbon) used for status tags, via the new `<Ribbon>` component.
 - [x] Hand-rewrote the highest-leverage surfaces in full: `RoleLayout` (now a dark-navy sidebar with the crest, ribbon role tag, active-state indicator — and fully responsive: collapses to a hamburger-triggered drawer below `lg`), the login page (premium split-panel layout, hidden identity panel on mobile), all 4 role dashboards (Admin/Teacher/Student/Librarian, using new `<QuickLinkCard>`/`<StatCard>` components), and the student Results page (ledger-card styling, ribbon SGPA badges, mono course codes).
 - [x] Accessibility/quality floor per the design brief: visible `:focus-visible` outlines sitewide, `prefers-reduced-motion` respected, responsive down to mobile on every rewritten surface.
-- [ ] Follow-up: the ~35 pages not individually rewritten (attendance rosters, library, invoices, complaints, requests, etc.) inherit the new color palette and fonts automatically via the theme remap, but still use the older generic card/spacing patterns rather than `.ledger-card`/`<Ribbon>` — a further pass to apply the shared components everywhere would make the whole app fully consistent, not just re-colored.
+- [x] Follow-up: the pages not individually rewritten in the theme overhaul got handled in round 15's full content-enrichment pass — every role page was rebuilt on `.ledger-card`/`<Ribbon>`/`<StatCard>`/`<QuickLinkCard>` and the shared `<PageHeader>`/`<EmptyState>` components, so the design system is now applied consistently across all ~40 pages, not just re-colored.
 
 ## 13. Compile error fixes (post-theme-overhaul)
 - [x] Fixed a real CSS bug: a comment in `globals.css` contained a literal `*/` sequence inside its text ("bg-slate-*/text-slate-*/..."), which closed the CSS comment early and broke parsing. Reworded to avoid embedded `*/`.
@@ -125,7 +125,86 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] **New: Admin → Manage Users page** (`/admin/users`) — tabbed forms to create new Student or Teacher accounts (department dropdown, semester/designation selects) — previously only existed as an unused backend endpoint with no UI at all.
 - [x] **Calendar-style weekly timetable grid** for both student and teacher timetable pages — replaces the old day-grouped card list with a real Mon–Sat × time-slot grid table, color-coded by course, with a legend. This was an explicit ask ("proper calendar type for timetables").
 - [x] Custom themed scrollbar (thin, navy-tinted) applied sitewide via `* ::-webkit-scrollbar`, plus a `.scroll-area` utility for constrained-height lists (attendance roster now scrolls in a fixed-height container instead of pushing the page).
-- [ ] Follow-up: charts and calendar-grid treatment only applied to the highest-traffic pages (both dashboards ×4 roles, both timetables) — library/invoices/complaints/requests pages still use the plain list pattern from the earlier chunk.
+- [x] Follow-up: charts + calendar-grid treatment extended to the remaining pages in round 15 (library, invoices, complaints, requests, notifications, blocks, feedback, and every other page got real data, stat cards, filter tabs, and ribbons).
 
 ---
-**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions), then extending charts/calendar/scroll polish to the remaining pages.
+
+## 15. Full-page content density pass (every role page rebuilt on real data)
+
+Round covering all ~40 frontend pages with informative, data-dense content instead of bare one-line headers — all client-side, built on existing API endpoints (no backend changes except noted fixes).
+
+**Shared building blocks**
+- New `PageHeader` (eyebrow + serif title + subtext + optional action) and `EmptyState` (title + hint) components in `src/components/ui/page-header.tsx`; used across every rewritten page alongside the existing `StatCard`/`QuickLinkCard`/`ChartCard`/`Ribbon` kit.
+
+**Student pages**
+- `attendance` — stat grid (attendance %, present/absent/total), progress-vs-threshold bar with threshold tick, last-6-sessions P/A strip, recent-records list with date/status ribbons.
+- `complaints` & `requests` — status count ribbons, filter tabs, response/remarks threads, richer cards with mono IDs and timestamps.
+- `notifications` — full notice board with role ribbons and posted-by metadata.
+- `library` — full book catalog grid with ISBN/availability ribbons + "My Reservations" list with cancel, plus a course/author search.
+- `invoices` — outstanding/paid/due-day counts (StatCards), due-in-X-day chips, Pay Now action.
+- `enrollment` — live enrollment-window banner, department picker, schedule window, enroll/withdraw actions with active enrollments listed.
+- `feedback` — course dropdown + star-rating submission + "my reviews" history (`/feedback/mine/:studentId`).
+- `assignments` — open/due/past-due stat cards, deadline ribbons, submission status + file link.
+
+**Admin pages**
+- `blocks` — per-block floor & room chips, capacity/type breakdown.
+- `invoices` — student picker + department filter + full ledger.
+- `complaints`/`requests` — status counts, filter tabs, richer cards, approve/reject with remarks.
+- `library` — pending-clearance count ribbon on the dashboard.
+- `notifications` — ALL/DEPARTMENT/SECTION audience picker with department/section dropdowns (loaded via `/sections?departmentId=...`) + recently-published feed.
+- `timetable-generator` — department picker + result board with placed/unplaced counts.
+
+**Teacher pages**
+- `feedback` — section selector, avg/response stat cards, satisfaction meter bar, comment list.
+- `assignments` — section picker, robust posting form, posted list, submission detail with inline grading (grade + feedback + Save Grade via `/assignments/submissions/:id/grade`).
+- `grades` — section/component/roster pickers, marks entry.
+- `attendance` — section + date pickers, present/absent stat cards, P/A roster with "mark all" shortcuts (course code echo guarded).
+
+**Librarian pages**
+- `dashboard` — catalog stats + clearance count + quick links.
+- `books` — add-book form, search, per-book availability progress bars.
+- `clearances` — enriched queue (student info, request line, approve/reject).
+
+**Pre-existing bug fixes caught by the stricter typecheck**
+- `currentCourse?.course.code` in teacher attendance; `h.section.course.title` in student feedback; `decodeURIComponent(match[1] ?? '')` in `auth-context.tsx` so the profile restore works with encoded tokens.
+- `pnpm --filter @cust/web typecheck` and `next build` both green.
+
+---
+
+## 16. Feedback round — complete transcript, grade sheet, admin tools, notification bell
+
+Applied Ali's round of direct feedback across both apps.
+
+**Grading / Results**
+- **Teacher grade sheet table** — replaced the dropdown-per-student "Enter Grades" UI with a real spreadsheet: new `GET /grades/section/:sectionId` endpoint returns each enrolled student + their existing component scores; the page shows a student × component grid with per-cell marks/max inputs, live running % + letter, and a single "Save Sheet" that upserts only the changed cells (idempotent, no dup rows).
+- **Complete student transcript** — `getStudentBreakdown` now fetches the student's `semester` and aligns recorded terms to it: a 7th-sem student sees Semester cards 1st…7th in order, with any semesters lacking records rendered as "Not yet recorded" placeholders (so the transcript reads history-first). CGPA + per-semester SGPA stay credit-hour-weighted. The PDF transcript now prints every semester up to the current one (blank semesters show "No courses on record"), labels the current one, and lists total credit hours.
+- Results page stats (CGPA / current semester / semesters on file / credit hours) + Download Transcript button.
+
+**Attendance roster bug (real fix)**
+- `AttendanceService.getSectionRoster` was querying the legacy `Student.sectionId` field (which seeds never set) → a section with 6 enrolled students showed "No students enrolled". Rewrote it to read from active `Enrollment` records and attach that date's attendance — roster now correctly shows every enrolled student with Present/absent toggles.
+
+**Uploads file links (404 fix)**
+- The API serves assignment files at `/uploads/...` on the API origin, but the teacher assignments page linked them relative, so clicking produced a 404 on the web origin. Added `absoluteFileUrl()` in `api-client.ts` and used it on all "View submission file" links so they resolve to `http://localhost:4000/uploads/...`.
+
+**Academic structure / admin**
+- **Add departments** — new `POST /departments` (ADMIN) endpoint + new `/admin/departments` page with an Add-Department form (name, code, class window start/end) and a catalog of existing departments. Wired into the admin nav.
+- **Complete department timetable view** — new `GET /timetable/department/:departmentId` returns every section of a department with its teacher, assigned room (block/floor/label/type), and the full enrolled-student roster. The admin **Timetable Generator** page now shows the finished weekly Mon–Sat × time grid (color-coded course chips, room + teacher on each slot, expandable "N students" roster per slot) plus a section-roster summary — so an admin can see exactly *which room, which section, which teacher, which students* at a glance.
+
+**Librarian dashboard charts**
+- Recharts: collection availability donut (on-shelf vs out-on-loan copies) and a top-6-titles stock bar (owned vs available) — plus the catalog/copy/on-shelf/pending-clearance stat cards.
+
+**Notifications bell + pages**
+- New `<NotificationBell>` in `RoleLayout`: bell icon with live total badge, click-to-open dropdown (latest 5 announcements + "View all"), closes on outside click; added to all four roles (desktop header bar + mobile top bar).
+- New teacher & librarian Announcements pages (mirroring the student one), wired into each sidebar nav; teacher's filters by department.
+
+**Student attendance page**
+- The "Recent Records" list now shows the complete record — all days in a fixed-height scrollable table (sticky header), instead of a truncated top-12 with a "showing most recent x of y" message.
+
+**Sitewide dropdown/UX styling**
+- Global `select` restyle in `globals.css`: native caret hidden, custom navy chevron, hover border + focus ring, pointer cursor, white background — applied automatically to every dropdown on every page (section/course/student pickers, date pickers, etc.), with matching focus treatment for text/number inputs.
+
+**Typecheck/build**: `apps/api` and `apps/web` both `typecheck` clean; `next build` compiles all 38 static pages (the standalone-trace `EPERM` symlink warning on Windows remains an environment-only issue).
+
+---
+
+**Still open / next candidates:** CI (TypeScript + lint on push via GitHub Actions); real payment gateway for invoices ("pay" is still a fake success); book-reservation fulfillment (PENDING → FULFILLED on pickup) in the librarian UI; enrollment-schedule admin form; transcript/letter requests producing actual PDFs; email notifications (BullMQ); realistic production deployment.

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch, ApiError } from '@/lib/api-client';
+import { apiFetch, ApiError, absoluteFileUrl } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
 import { Ribbon } from '@/components/ui/ribbon';
 
@@ -237,7 +237,7 @@ export default function TeacherAssignmentsPage() {
                     <p className="font-data text-sm font-medium text-slate-900">{studentName(s.studentId)}</p>
                     <span className="text-xs text-slate-400">Submitted {new Date(s.submittedAt).toLocaleString()}</span>
                   </div>
-                  <a href={s.fileUrl} target="_blank" rel="noreferrer" className="mb-3 inline-block text-sm text-blue-600 underline">
+                  <a href={absoluteFileUrl(s.fileUrl)} target="_blank" rel="noreferrer" className="mb-3 inline-block text-sm text-blue-600 underline">
                     View submission file
                   </a>
                   {s.grade !== null ? (

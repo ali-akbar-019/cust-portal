@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
+import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
 import { Ribbon } from '@/components/ui/ribbon';
 
 interface CourseBreakdown {
@@ -16,22 +18,33 @@ interface CourseBreakdown {
   components: { component: string; marks: number; maxMarks: number }[];
 }
 interface SemesterBreakdown {
-  term: string;
+  semester: number;
+  term: string | null;
   courses: CourseBreakdown[];
-  sgpa: number;
+  sgpa: number | null;
   creditHours: number;
 }
 interface Breakdown {
   semesters: SemesterBreakdown[];
+  currentSemester: number;
   cgpa: number;
   totalCreditHours: number;
 }
+
+const ORDINAL = (n: number) => {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n}st`;
+  if (mod10 === 2 && mod100 !== 12) return `${n}nd`;
+  if (mod10 === 3 && mod100 !== 13) return `${n}rd`;
+  return `${n}th`;
+};
 
 export default function StudentResultsPage() {
   const { accessToken, profile, isLoading: authLoading } = useAuth();
   const [data, setData] = useState<Breakdown | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [openTerm, setOpenTerm] = useState<string | null>(null);
+  const [openTerm, setOpenTerm] = useState<number | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
@@ -43,7 +56,8 @@ export default function StudentResultsPage() {
     apiFetch<Breakdown>(`/grades/student/${profile.studentId}`, { token: accessToken })
       .then((res) => {
         setData(res);
-        if (res.semesters.length > 0) setOpenTerm(res.semesters[0]?.term ?? null);
+        const lastFilled = [...res.semesters].reverse().find((s) => s.term !== null);
+        setOpenTerm(lastFilled?.semester ?? res.semesters[0]?.semester ?? null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load results'));
   }, [accessToken, profile, authLoading]);
@@ -71,53 +85,79 @@ export default function StudentResultsPage() {
     }
   }
 
-  if (error) return <main className="p-8 text-sm text-red-600">{error}</main>;
-  if (!data) return <main className="p-8 text-sm text-slate-500">Loading...</main>;
+  if (error) return <main className="p-6 lg:p-10"><PageHeader title="Results" subtitle="Your complete academic record" /><p className="text-sm text-red-600">{error}</p></main>;
+  if (!data) return <main className="p-6 lg:p-10"><PageHeader title="Results" subtitle="Your complete academic record" /><p className="text-sm text-slate-500">Loading results...</p></main>;
+
+  const recorded = data.semesters.filter((s) => s.term !== null).length;
+  const recordedSems = data.semesters.filter((s) => s.term !== null);
+  const lastRecorded = recordedSems[recordedSems.length - 1];
 
   return (
     <main className="p-6 lg:p-10">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Academic Record</p>
-          <h1 className="font-serif text-2xl font-semibold text-slate-900">Results</h1>
-        </div>
-        <button
-          onClick={handleDownloadTranscript}
-          disabled={isDownloading}
-          className="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50"
-        >
-          {isDownloading ? 'Preparing...' : 'Download Transcript'}
-        </button>
-      </div>
+      <PageHeader
+        eyebrow="Academic Record"
+        title="Results & Transcript"
+        subtitle={`Current semester: ${ORDINAL(data.currentSemester)} — ${recorded} semester${recorded === 1 ? '' : 's'} of records on file so far`}
+        action={
+          <button
+            onClick={handleDownloadTranscript}
+            disabled={isDownloading}
+            className="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-50"
+          >
+            {isDownloading ? 'Preparing...' : 'Download Transcript (PDF)'}
+          </button>
+        }
+      />
 
-      <div className="ledger-card mb-8 max-w-xs p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Cumulative GPA</p>
-        <p className="font-serif text-4xl font-semibold text-slate-900">{data.cgpa.toFixed(2)}</p>
-        <p className="mt-1 text-xs text-slate-500">{data.totalCreditHours} total credit hours</p>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Cumulative GPA" value={data.cgpa.toFixed(2)} hint="Across all recorded semesters" />
+        <StatCard label="Current Semester" value={ORDINAL(data.currentSemester)} />
+        <StatCard label="Semesters on File" value={String(recorded)} />
+        <StatCard label="Credit Hours" value={String(data.totalCreditHours)} />
       </div>
 
       {data.semesters.length === 0 && (
-        <p className="text-sm text-slate-500">No results yet — grades will appear here once your teachers enter them.</p>
+        <div className="max-w-xl">
+          <EmptyState
+            title="No results recorded yet"
+            hint="Grades appear here semester by semester as your teachers enter them. Your transcript will lay out every semester from the 1st to your current one."
+          />
+        </div>
       )}
 
       <div className="max-w-2xl space-y-3">
         {data.semesters.map((sem) => {
-          const isOpen = openTerm === sem.term;
+          const isOpen = openTerm === sem.semester;
+          const isCurrent = sem.semester === data.currentSemester;
+          const empty = sem.term === null;
           return (
-            <div key={sem.term} className="ledger-card overflow-hidden">
+            <div key={sem.semester} className={`ledger-card overflow-hidden ${isCurrent ? 'ring-1 ring-red-600/30' : ''}`}>
               <button
-                onClick={() => setOpenTerm(isOpen ? null : sem.term)}
-                className="flex w-full items-center justify-between px-5 py-4 text-left"
+                onClick={() => setOpenTerm(empty ? null : isOpen ? null : sem.semester)}
+                disabled={empty}
+                className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
               >
-                <span className="font-serif text-base font-semibold text-slate-900">{sem.term}</span>
-                <span className="flex items-center gap-2 text-sm text-slate-500">
-                  <Ribbon tone="navy">SGPA {sem.sgpa.toFixed(2)}</Ribbon>
-                  <span className="font-data text-xs">{sem.creditHours} CH</span>
-                  <span className="text-slate-400">{isOpen ? '▲' : '▼'}</span>
+                <span className="flex items-center gap-2">
+                  <span className="font-serif text-base font-semibold text-slate-900">
+                    {ORDINAL(sem.semester)} Semester
+                  </span>
+                  {isCurrent && <Ribbon tone="crimson">Current</Ribbon>}
                 </span>
+                {!empty ? (
+                  <span className="flex items-center gap-2 text-sm text-slate-500">
+                    <span className="hidden sm:inline">{sem.term}</span>
+                    <Ribbon tone="navy">SGPA {sem.sgpa?.toFixed(2) ?? '—'}</Ribbon>
+                    <span className="font-data text-xs">{sem.creditHours} CH</span>
+                    <span className="text-slate-400">{isOpen ? '▲' : '▼'}</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-400">Not yet recorded</span>
+                )}
               </button>
-              {isOpen && (
+
+              {isOpen && !empty && (
                 <div className="space-y-2 border-t border-slate-100 bg-slate-50/60 p-4">
+                  <p className="mb-3 text-center text-xs uppercase tracking-wide text-slate-400">{sem.term}</p>
                   {sem.courses.map((c) => (
                     <div key={c.courseId} className="rounded-md border border-slate-200 bg-white p-4">
                       <div className="mb-1 flex items-center justify-between">
@@ -141,12 +181,21 @@ export default function StudentResultsPage() {
                       </div>
                     </div>
                   ))}
+                  {sem.courses.length === 0 && (
+                    <p className="text-sm text-slate-500">Enrolled courses for this semester aren't graded yet.</p>
+                  )}
                 </div>
               )}
             </div>
           );
         })}
       </div>
+
+      {lastRecorded && lastRecorded.semester < data.currentSemester && (
+        <p className="mt-6 max-w-2xl text-xs text-slate-400">
+          Earlier semesters appear blank until the registrar records those terms — your results will fill in history-first as old records are entered.
+        </p>
+      )}
     </main>
   );
 }

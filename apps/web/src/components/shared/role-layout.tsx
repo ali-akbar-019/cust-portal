@@ -6,16 +6,30 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Ribbon } from '@/components/ui/ribbon';
+import { NotificationBell } from '@/components/ui/notification-bell';
 
 interface NavItem {
   href: string;
   label: string;
 }
 
-export function RoleLayout({ title, items, children }: { title: string; items: NavItem[]; children: React.ReactNode }) {
+export function RoleLayout({
+  title,
+  items,
+  notificationsHref,
+  children,
+}: {
+  title: string;
+  items: NavItem[];
+  notificationsHref?: string;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const { logout, profile } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const activeItem = items.find((item) => pathname === item.href);
+  const pageLabel = activeItem?.label ?? title;
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-slate-900 text-slate-300">
@@ -86,7 +100,19 @@ export function RoleLayout({ title, items, children }: { title: string; items: N
           </button>
           <Image src="/cust-logo.png" alt="CUST" width={24} height={24} />
           <span className="font-serif text-sm font-semibold text-slate-900">CUST Portal</span>
+          <div className="ml-auto">{notificationsHref && <NotificationBell href={notificationsHref} />}</div>
         </header>
+
+        {/* desktop top bar */}
+        {notificationsHref && (
+          <header className="hidden items-center justify-between border-b border-slate-200 bg-white px-6 py-3 lg:flex">
+            <div className="flex items-center gap-2">
+              <Ribbon tone="crimson">{title}</Ribbon>
+              <span className="font-serif text-sm font-semibold text-slate-900">{pageLabel}</span>
+            </div>
+            <NotificationBell href={notificationsHref} />
+          </header>
+        )}
 
         <div className="flex-1">{children}</div>
       </div>

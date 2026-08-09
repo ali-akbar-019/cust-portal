@@ -36,10 +36,8 @@ export default function StudentAttendancePage() {
   if (!summary) return <main className="p-6 lg:p-10"><PageHeader title="My Attendance" subtitle="Your presence record for the current semester" /><p className="text-sm text-slate-500">Loading attendance...</p></main>;
 
   const absent = summary.total - summary.present;
-  const recent = [...summary.records].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
-  const streak = [...summary.records]
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 6);
+  const records = [...summary.records].sort((a, b) => b.date.localeCompare(a.date));
+  const streak = records.slice(0, 6);
 
   return (
     <main className="p-6 lg:p-10">
@@ -100,29 +98,26 @@ export default function StudentAttendancePage() {
         </div>
       </div>
 
-      <h2 className="mb-3 font-serif text-lg font-semibold text-slate-900">Recent Records</h2>
-      {summary.records.length === 0 ? (
+      <h2 className="mb-3 font-serif text-lg font-semibold text-slate-900">
+        Attendance Record <span className="text-sm font-normal text-slate-400">({records.length} sessions)</span>
+      </h2>
+      {records.length === 0 ? (
         <EmptyState title="No attendance recorded yet" hint="Records will appear here once your teachers start taking attendance." />
       ) : (
-        <>
-          <div className="max-w-xl overflow-hidden rounded-lg border border-slate-200 text-sm">
-            <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-              <span>Date</span>
-              <span>Status</span>
-            </div>
-            {recent.map((r, i) => (
-              <div key={i} className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 last:border-b-0">
-                <span className="text-slate-700">{new Date(r.date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                <Ribbon tone={r.status === 'PRESENT' ? 'emerald' : 'crimson'}>
-                  {r.status === 'PRESENT' ? 'Present' : 'Absent'}
-                </Ribbon>
-              </div>
-            ))}
+        <div className="scroll-area max-w-xl overflow-y-auto rounded-lg border border-slate-200 text-sm" style={{ maxHeight: '28rem' }}>
+          <div className="sticky top-0 grid grid-cols-2 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            <span>Date</span>
+            <span>Status</span>
           </div>
-          {summary.records.length > recent.length && (
-            <p className="mt-2 text-xs text-slate-500">Showing the most recent {recent.length} of {summary.records.length} recorded classes.</p>
-          )}
-        </>
+          {records.map((r, i) => (
+            <div key={i} className="grid grid-cols-2 items-center border-b border-slate-100 bg-white px-4 py-2.5 last:border-b-0">
+              <span className="text-slate-700">{new Date(r.date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+              <Ribbon tone={r.status === 'PRESENT' ? 'emerald' : 'crimson'}>
+                {r.status === 'PRESENT' ? 'Present' : 'Absent'}
+              </Ribbon>
+            </div>
+          ))}
+        </div>
       )}
     </main>
   );

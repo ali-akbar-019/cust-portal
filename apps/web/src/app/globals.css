@@ -92,6 +92,54 @@
     background: var(--color-red-100);
     color: var(--color-slate-900);
   }
+
+  /* Native dropdowns restyled to match the ledger aesthetic — hide the
+     OS arrow, draw our own chevron, and give the whole picker clearer
+     states so the every-page section/course dropdowns stop looking daft. */
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1.5l5 4 5-4' fill='none' stroke='%23202339' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 0.8em;
+    padding-right: 2.2rem;
+    cursor: pointer;
+  }
+  select:hover {
+    border-color: var(--color-slate-400);
+  }
+  select:focus {
+    outline: none;
+    border-color: var(--color-slate-900);
+    box-shadow: 0 0 0 3px rgb(20 33 61 / 0.08);
+  }
+  /* date/time pickers keep their native calendar icon on the right —
+     give them the same padding so text never runs under the caret */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    cursor: pointer;
+  }
+  input[type='text'],
+  input[type='number'],
+  input[type='search'],
+  input[type='email'],
+  input[type='password'],
+  textarea {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  input[type='text']:focus,
+  input[type='number']:focus,
+  input[type='search']:focus,
+  input[type='email']:focus,
+  input[type='password']:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--color-slate-900);
+    box-shadow: 0 0 0 3px rgb(20 33 61 / 0.08);
+  }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;

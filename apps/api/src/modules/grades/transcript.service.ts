@@ -3,6 +3,15 @@ import { prisma } from '@cust/database';
 import PDFDocument from 'pdfkit';
 import { GradesService } from './grades.service';
 
+interface SheetCourse {
+  courseCode: string;
+  courseTitle: string;
+  creditHours: number;
+  percentage: number;
+  letter: string;
+  gradePoints: number;
+}
+
 @Injectable()
 export class TranscriptService {
   constructor(private readonly gradesService: GradesService) {}
@@ -35,9 +44,19 @@ export class TranscriptService {
       doc.text(`Current Semester: ${student.semester}`);
       doc.moveDown(1);
 
+      const current = breakdown.currentSemester;
       for (const sem of breakdown.semesters) {
-        doc.fontSize(13).text(sem.term, { underline: true });
+        let heading = `Semester ${sem.semester}`;
+        if (sem.term) heading += ` — ${sem.term}`;
+        if (sem.semester === current) heading += '  [Current]';
+        doc.fontSize(13).text(heading, { underline: true });
         doc.moveDown(0.3);
+
+        if (!sem.term) {
+          doc.fontSize(9).text('No courses on record for this semester.');
+          doc.moveDown(1);
+          continue;
+        }
 
         const colX = { code: 50, title: 110, ch: 300, pct: 350, grade: 410, points: 470 };
         let rowY = doc.y;
@@ -52,7 +71,7 @@ export class TranscriptService {
         doc.y = rowY;
         doc.moveDown(0.2);
 
-        for (const c of sem.courses) {
+        for (const c of sem.courses as SheetCourse[]) {
           rowY = doc.y;
           doc.text(c.courseCode, colX.code, rowY);
           doc.text(c.courseTitle, colX.title, rowY, { width: 180 });
@@ -64,7 +83,7 @@ export class TranscriptService {
         }
 
         doc.moveDown(0.3);
-        doc.fontSize(9).text(`Semester GPA: ${sem.sgpa.toFixed(2)}  |  Credit Hours: ${sem.creditHours}`, { align: 'right' });
+        doc.fontSize(9).text(`Semester GPA: ${sem.sgpa?.toFixed(2) ?? '—'}  |  Credit Hours: ${sem.creditHours}`, { align: 'right' });
         doc.moveDown(1);
       }
 

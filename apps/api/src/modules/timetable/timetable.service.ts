@@ -82,4 +82,30 @@ export class TimetableService {
       orderBy: [{ day: 'asc' }, { startTime: 'asc' }],
     });
   }
+
+  // The full picture an admin needs after running the generator: every
+  // section of a department, its teacher, which room + time window each
+  // slot occupies, and the enrolled students — so they can answer "who
+  // is where, when and with whom" without clicking into student pages.
+  getDepartmentTimetable(departmentId: string) {
+    return prisma.section.findMany({
+      where: { course: { departmentId } },
+      include: {
+        course: { select: { code: true, title: true, creditHours: true } },
+        teacher: { include: { user: { select: { email: true } } } },
+        _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } },
+        enrollments: {
+          where: { status: 'ACTIVE' },
+          include: { student: { select: { id: true, enrollmentNo: true, semester: true } } },
+        },
+        slots: {
+          include: {
+            room: { select: { id: true, label: true, type: true, floor: { select: { floorNumber: true, block: { select: { name: true } } } } } },
+          },
+          orderBy: [{ day: 'asc' }, { startTime: 'asc' }],
+        },
+      },
+      orderBy: [{ term: 'asc' }, { course: { code: 'asc' } }],
+    });
+  }
 }

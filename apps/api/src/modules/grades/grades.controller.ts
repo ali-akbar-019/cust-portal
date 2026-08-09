@@ -24,6 +24,13 @@ export class GradesController {
     return this.gradesService.upsertGrade(dto);
   }
 
+  @UseGuards(RolesGuard)
+  @Roles('TEACHER', 'ADMIN')
+  @Get('section/:sectionId')
+  getSectionSheet(@Param('sectionId') sectionId: string) {
+    return this.gradesService.getSectionGradeSheet(sectionId);
+  }
+
   @Get('student/:studentId')
   async getBreakdown(@Param('studentId') studentId: string, @CurrentUser() user: AuthenticatedUser) {
     await ensureOwnStudentOrElevated(user, studentId);

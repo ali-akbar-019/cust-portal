@@ -7,11 +7,12 @@ const TEACHER_NAV = [
   { href: '/teacher/assignments', label: 'Assignments' },
   { href: '/teacher/grades', label: 'Enter Grades' },
   { href: '/teacher/feedback', label: 'Section Feedback' },
+  { href: '/teacher/notifications', label: 'Announcements' },
 ];
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RoleLayout title="Teacher" items={TEACHER_NAV}>
+    <RoleLayout title="Teacher" items={TEACHER_NAV} notificationsHref="/teacher/notifications">
       {children}
     </RoleLayout>
   );

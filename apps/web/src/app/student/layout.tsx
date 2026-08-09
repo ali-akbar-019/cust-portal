@@ -17,7 +17,7 @@ const STUDENT_NAV = [
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RoleLayout title="Student" items={STUDENT_NAV}>
+    <RoleLayout title="Student" items={STUDENT_NAV} notificationsHref="/student/notifications">
       {children}
     </RoleLayout>
   );

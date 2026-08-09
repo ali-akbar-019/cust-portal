@@ -45,14 +45,22 @@ export class AttendanceService {
     };
   }
 
-  getSectionRoster(sectionId: string, date: string) {
-    // students in the section + whether they already have a record for this date
-    return prisma.student.findMany({
-      where: { sectionId },
+  // Enrolled roster for the teacher's mark-attendance screen. Membership is
+  // tracked through Enrollment (the `Student.sectionId` field is a legacy
+  // "primary section" that seeds never set), so read from enrollments and
+  // attach any attendance record they already have for the chosen date.
+  async getSectionRoster(sectionId: string, date: string) {
+    const enrollments = await prisma.enrollment.findMany({
+      where: { sectionId, status: 'ACTIVE' },
       include: {
-        user: { select: { email: true } },
-        attendances: { where: { sectionId, date: new Date(date) } },
+        student: {
+          include: {
+            user: { select: { email: true } },
+            attendances: { where: { sectionId, date: new Date(date) } },
+          },
+        },
       },
     });
+    return enrollments.map((e) => e.student);
   }
 }

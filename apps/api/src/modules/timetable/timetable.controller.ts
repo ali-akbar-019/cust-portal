@@ -21,6 +21,13 @@ export class TimetableController {
 
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
+  @Get('department/:departmentId')
+  getDepartmentTimetable(@Param('departmentId') departmentId: string) {
+    return this.timetableService.getDepartmentTimetable(departmentId);
+  }
+
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   @Post('slots')
   async createSlot(@Body() dto: CreateSlotDto) {
     // TODO: derive teacherId server-side from dto.sectionId instead of

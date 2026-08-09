@@ -1,6 +1,6 @@
 # CUST Portal
 
-A full-stack university management portal built for **Capital University of Science & Technology (CUST)** — replacing the existing student portal with a faster, modern, role-based system covering timetables, attendance, grades, assignments, enrollment, library, invoices, complaints, and more.
+A full-stack university management portal built for **Capital University of Science & Technology (CUST)** — a modern, role-based replacement for the university's portal (Tasjeel). It covers timetables, attendance, grades, assignments, enrollment, library, invoices, complaints, requests, feedback, announcements, and more — for **students, teachers, admins, and librarians**, all from a single clean web app.
 
 <p align="center">
   <img src="apps/web/public/cust-logo.png" alt="CUST logo" width="120" />
@@ -36,7 +36,7 @@ CUST's current student portal (Tasjeel) is slow, dated, and missing basic qualit
 ```
 cust-portal/
 ├── apps/
-│   ├── web/            # Next.js frontend (student / teacher / admin portals)
+│   ├── web/            # Next.js frontend (Student / Teacher / Admin / Librarian portals)
 │   └── api/             # NestJS backend (19 feature modules)
 ├── packages/
 │   ├── database/         # Prisma schema + client
@@ -50,19 +50,50 @@ cust-portal/
 
 ## Features
 
-- **Auth & Roles** — JWT-based login, Student / Teacher / Admin roles, guarded routes on both frontend and backend
-- **Timetable Engine** — real block → floor → room modeling (matches CUST's actual A–K block layout), automatic clash detection, and a greedy + backtracking constraint-solver that auto-generates a full timetable for a department
-- **Attendance** — bulk marking per section/date, student-facing percentage with a low-attendance warning
-- **Assignments** — file upload, deadline-locked submission, teacher grading + feedback
-- **Grades** — component-wise marks entry, per-course breakdown, credit-hour-weighted GPA
-- **Enrollment** — admin-scheduled enrollment windows, seat-limited self-enrollment, withdrawal
-- **Library** — book catalog, reservation with live copy tracking, clearance request workflow
-- **Invoices** — fee tracking with automatic overdue detection
-- **Complaints & Requests** — student submissions (transcripts, letters, course withdraw, etc.), admin triage and resolution
-- **Feedback/QA** — anonymized course/teacher feedback so students can be honest
-- **Announcements** — targeted to everyone, a department, or a specific section
+### Auth & Roles
+- **JWT-based login** (short-lived access + refresh tokens) with role-based guards on both frontend and backend.
+- Four fully-featured portals — **Student, Teacher, Admin, Librarian** — each with its own responsive sidebar, landing dashboard, and restricted routes (a student can never reach an admin page).
+- Student can log in and see their real id-driven data (attendance, results, invoices, requests…) without any manual configuration.
 
-See [`PROGRESS.md`](./PROGRESS.md) for the detailed, up-to-date build log of every module.
+### Timetable
+- **Auto-generator**: a constraint-solver (greedy + backtracking) that assigns every section of a department a day, time-window, and room while respecting room capacity, room type (lab vs. lecture hall), teacher conflicts, and each department's class-hours window.
+- **Calendar weekly grid** for students and teachers (Mon–Sat × time slots, color-coded by course).
+- **Admin visual timetable viewer**: after generating, an admin sees the full department week — which room, which section, which teacher, and the enrolled students per slot — plus a section roster summary.
+
+### Attendance
+- Teachers bulk-mark a section for a date (Present/Absent toggles, "mark all" shortcuts); re-marking the same day updates the sheet in place.
+- Students see a percentage vs. the 75% exam-eligibility threshold, a trend strip, and their full day-by-day record in a scrollable history.
+
+### Assignments
+- Teachers post assignments (title, instructions, deadline) to a section with **file upload**.
+- Students submit before the deadline; late submissions are rejected server-side.
+- Teachers grade each submission (grade + feedback) and open the submitted file directly.
+
+### Grades & Results
+- **Spreadsheet-style grade sheet**: teachers enter marks in a student × component grid (Quiz/Midterm/Final…), with live totals and a one-click save.
+- Students see a **complete numbered transcript** (Semester 1…current), per-semester SGPA + CGPA (credit-hour weighted), and a downloadable **PDF transcript** that covers every semester in order.
+
+### Enrollment & Sections
+- Admin-configured enrollment windows per department, self-enrollment with gates (window open, seat available, not already enrolled), and withdrawal.
+
+### Library
+- Librarian catalog management (add books, search, live on-shelf vs loaned counts with charts).
+- Students browse and reserve books (copies decremented transactionally, cancel returns them) and request a library clearance; librarian approves/rejects pending clearances.
+
+### Invoices & Payments
+- Fee invoices with automatic pending → overdue flip, due-day badges, and a (stubbed) Pay Now action — a real payment gateway is flagged as a TODO.
+
+### Complaints & Requests
+- Students file complaints and requests (transcripts, letters, course withdraw, info change); admins triage and resolve (course-withdraw approval really withdrawals the enrollment).
+
+### Feedback & Announcements
+- Anonymized course/teacher feedback (averages + comments, never tied to an individual student) visible to teachers, submission visible to students.
+- **Announcements** targeted to everyone / a department / a section — with a sitewide **notification bell** (live count + dropdown preview) and dedicated pages for every role.
+
+### Design & UX polish
+- Distinctive **"Collegiate Ledger"** theme: deep navy + crimson ribbon, academic serif headings, mono record IDs, custom ribbons/stat cards/ledgers, themed scrollbars, full responsiveness, and site-wide refined dropdowns/inputs.
+
+> See [`PROGRESS.md`](./PROGRESS.md) for the detailed, up-to-date build log of every module.
 
 ## Getting Started
 
@@ -93,7 +124,7 @@ npx prisma migrate dev --name init
 npx prisma db seed
 cd ../..
 ```
-This creates all tables and seeds: 3 departments, all 9 blocks with floors/rooms, and one test account per role (see below).
+This creates all tables and seeds: 3 departments, all 9 blocks with floors/rooms, a full 6-student-per-department dataset, a 10-book catalog, and one test account per role (see below).
 
 ### 5. Run the app
 ```bash
@@ -110,6 +141,9 @@ All seeded with the password `Password123!`:
 | Admin | admin@cust.edu.pk |
 | Teacher | teacher@cust.edu.pk |
 | Student | student@cust.edu.pk |
+| Librarian | librarian@cust.edu.pk |
+
+> Student/teacher accounts can also be created from the UI: **Admin → Manage Users** (and **Admin → Departments** for new departments).
 
 > Tip: run `npx prisma studio` inside `packages/database` for a GUI to inspect and add data (e.g. courses, sections, books) that aren't part of the base seed.
 
