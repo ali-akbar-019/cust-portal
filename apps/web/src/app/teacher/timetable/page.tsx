@@ -14,6 +14,15 @@ interface SlotView {
 }
 
 const DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const DAY_LABEL: Record<string, string> = { MON: 'Mon', TUE: 'Tue', WED: 'Wed', THU: 'Thu', FRI: 'Fri', SAT: 'Sat' };
+const COURSE_COLORS = [
+  'bg-slate-900 text-white',
+  'bg-red-600 text-white',
+  'bg-blue-600 text-white',
+  'bg-green-600 text-white',
+  'bg-yellow-500 text-white',
+  'bg-slate-700 text-white',
+];
 
 export default function TeacherTimetablePage() {
   const { accessToken, profile, isLoading: authLoading } = useAuth();
@@ -37,28 +46,58 @@ export default function TeacherTimetablePage() {
   if (isLoading) return <main className="p-8 text-sm text-slate-500">Loading timetable...</main>;
   if (error) return <main className="p-8 text-sm text-red-600">{error}</main>;
 
+  const uniqueTimes = [...new Set(slots.map((s) => s.startTime))].sort();
+  const courseColorMap = new Map<string, string>();
+  [...new Set(slots.map((s) => s.section.course.code))].forEach((code, i) => courseColorMap.set(code, COURSE_COLORS[i % COURSE_COLORS.length]));
+
+  function slotAt(day: string, time: string) {
+    return slots.find((s) => s.day === day && s.startTime === time);
+  }
+
   return (
-    <main className="p-8">
-      <h1 className="mb-6 text-xl font-semibold">My Teaching Schedule</h1>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {DAY_ORDER.map((day) => {
-          const daySlots = slots.filter((s) => s.day === day).sort((a, b) => a.startTime.localeCompare(b.startTime));
-          if (daySlots.length === 0) return null;
-          return (
-            <div key={day} className="rounded-lg border border-slate-200 p-4">
-              <h2 className="mb-2 font-medium">{day}</h2>
-              {daySlots.map((s) => (
-                <div key={s.id} className="mb-2 rounded bg-slate-50 p-2 text-sm">
-                  <p className="font-medium">{s.section.course.title}</p>
-                  <p className="text-slate-500">
-                    {s.startTime}-{s.endTime} · Room {s.room.floor.block.name}-{s.room.label}
-                  </p>
-                </div>
+    <main className="p-6 lg:p-10">
+      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Weekly Schedule</p>
+      <h1 className="mb-6 font-serif text-2xl font-semibold text-slate-900">My Teaching Schedule</h1>
+
+      {slots.length === 0 ? (
+        <p className="text-sm text-slate-500">No timetable slots yet.</p>
+      ) : (
+        <div className="scroll-area ledger-card overflow-x-auto p-2">
+          <table className="w-full min-w-[720px] border-collapse text-sm">
+            <thead>
+              <tr>
+                <th className="w-20 border-b border-slate-200 p-2 text-left text-xs font-medium uppercase tracking-wide text-slate-400"></th>
+                {DAY_ORDER.map((d) => (
+                  <th key={d} className="border-b border-slate-200 p-2 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
+                    {DAY_LABEL[d]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {uniqueTimes.map((time) => (
+                <tr key={time}>
+                  <td className="border-b border-slate-100 p-2 align-top font-data text-xs text-slate-400">{time}</td>
+                  {DAY_ORDER.map((day) => {
+                    const slot = slotAt(day, time);
+                    return (
+                      <td key={day} className="border-b border-slate-100 p-1.5 align-top">
+                        {slot && (
+                          <div className={`rounded-md p-2 text-xs ${courseColorMap.get(slot.section.course.code)}`}>
+                            <p className="font-data font-medium">{slot.section.course.code}</p>
+                            <p className="opacity-90">{slot.room.floor.block.name}-{slot.room.label}</p>
+                            <p className="opacity-75">{slot.startTime}–{slot.endTime}</p>
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
               ))}
-            </div>
-          );
-        })}
-      </div>
+            </tbody>
+          </table>
+        </div>
+      )}
     </main>
   );
 }

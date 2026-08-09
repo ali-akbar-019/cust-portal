@@ -117,5 +117,15 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Added `express` + `@types/express` as direct dependencies of `apps/api` — `grades.controller.ts` imports `Response` from `express` for the transcript download endpoint, but express was only ever a transitive dependency via `@nestjs/platform-express`, which isn't guaranteed to resolve for direct type imports.
 - [ ] Environment step (not a code bug): the `Type '"LIBRARIAN"' is not assignable to type 'Role'` error means the local Prisma Client hasn't been regenerated since `LIBRARIAN` was added to the schema. Run `npx prisma migrate dev` (or `npx prisma generate`) inside `packages/database` to pick it up.
 
+## 14. Content density, charts, and calendar timetable
+- [x] Added `recharts` for real data visualization. New `<ChartCard>` wrapper component.
+- [x] **Student dashboard**: attendance trend line chart (last 10 classes), latest-semester grade bar chart (color-coded by performance), 4 stat cards (was 3), scrollable "Today's Schedule" and "Recent Announcements" widgets, "My Courses" chip list.
+- [x] **Admin dashboard**: real stats (total students/teachers, open complaints, pending requests — previously just links, no data), students-by-department bar chart, faculty-vs-students pie chart, a "Needs your attention" widget aggregating open complaints/pending requests/pending library clearances.
+- [x] **Teacher dashboard**: real stats (sections teaching, total students, avg section size), enrollment-by-section bar chart (enrolled vs. capacity).
+- [x] **New: Admin → Manage Users page** (`/admin/users`) — tabbed forms to create new Student or Teacher accounts (department dropdown, semester/designation selects) — previously only existed as an unused backend endpoint with no UI at all.
+- [x] **Calendar-style weekly timetable grid** for both student and teacher timetable pages — replaces the old day-grouped card list with a real Mon–Sat × time-slot grid table, color-coded by course, with a legend. This was an explicit ask ("proper calendar type for timetables").
+- [x] Custom themed scrollbar (thin, navy-tinted) applied sitewide via `* ::-webkit-scrollbar`, plus a `.scroll-area` utility for constrained-height lists (attendance roster now scrolls in a fixed-height container instead of pushing the page).
+- [ ] Follow-up: charts and calendar-grid treatment only applied to the highest-traffic pages (both dashboards ×4 roles, both timetables) — library/invoices/complaints/requests pages still use the plain list pattern from the earlier chunk.
+
 ---
-**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions), then extending the hand-crafted theme treatment to the remaining pages.
+**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions), then extending charts/calendar/scroll polish to the remaining pages.

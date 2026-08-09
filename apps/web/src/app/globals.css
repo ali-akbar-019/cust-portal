@@ -130,4 +130,47 @@
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
   }
+
+  /* Custom scrollbar — thin, navy-tinted, used on any scrollable list
+     (rosters, sidebars, long tables) instead of the raw OS default. */
+  .scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-slate-300) transparent;
+  }
+  .scroll-area::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-area::-webkit-scrollbar-thumb {
+    background-color: var(--color-slate-300);
+    border-radius: 999px;
+  }
+  .scroll-area::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-slate-400);
+  }
+}
+
+/* sitewide scrollbar (not just .scroll-area containers) — same treatment */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-slate-300) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-slate-300);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-slate-400);
 }

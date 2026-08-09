@@ -127,7 +127,7 @@ export default function TeacherAttendancePage() {
               </button>
             </div>
           </div>
-          <div className="mb-4 max-w-lg divide-y divide-slate-200 rounded-md border border-slate-200">
+          <div className="scroll-area mb-4 max-h-96 max-w-lg divide-y divide-slate-200 overflow-y-auto rounded-md border border-slate-200">
             {roster.map((s) => (
               <div key={s.id} className="flex items-center justify-between px-4 py-2 text-sm">
                 <span>
