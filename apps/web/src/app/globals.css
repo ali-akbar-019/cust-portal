@@ -13,7 +13,7 @@
 
   /* Neutral scale — remapped from Tailwind's default cool "slate" to a
      warm, navy-leaning ink scale. Every page in the app already uses
-     bg-slate-*/text-slate-*/border-slate-* utilities, so this single
+     the slate, text-slate, and border-slate utilities, so this single
      remap re-skins the entire product consistently. */
   --color-slate-50: #F7F6F2;
   --color-slate-100: #EEEDE7;

@@ -112,5 +112,10 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] Accessibility/quality floor per the design brief: visible `:focus-visible` outlines sitewide, `prefers-reduced-motion` respected, responsive down to mobile on every rewritten surface.
 - [ ] Follow-up: the ~35 pages not individually rewritten (attendance rosters, library, invoices, complaints, requests, etc.) inherit the new color palette and fonts automatically via the theme remap, but still use the older generic card/spacing patterns rather than `.ledger-card`/`<Ribbon>` — a further pass to apply the shared components everywhere would make the whole app fully consistent, not just re-colored.
 
+## 13. Compile error fixes (post-theme-overhaul)
+- [x] Fixed a real CSS bug: a comment in `globals.css` contained a literal `*/` sequence inside its text ("bg-slate-*/text-slate-*/..."), which closed the CSS comment early and broke parsing. Reworded to avoid embedded `*/`.
+- [x] Added `express` + `@types/express` as direct dependencies of `apps/api` — `grades.controller.ts` imports `Response` from `express` for the transcript download endpoint, but express was only ever a transitive dependency via `@nestjs/platform-express`, which isn't guaranteed to resolve for direct type imports.
+- [ ] Environment step (not a code bug): the `Type '"LIBRARIAN"' is not assignable to type 'Role'` error means the local Prisma Client hasn't been regenerated since `LIBRARIAN` was added to the schema. Run `npx prisma migrate dev` (or `npx prisma generate`) inside `packages/database` to pick it up.
+
 ---
 **Next chunk to build:** CI (typecheck + lint on push via GitHub Actions), then extending the hand-crafted theme treatment to the remaining pages.
