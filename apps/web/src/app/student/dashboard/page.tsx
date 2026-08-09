@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch, ApiError } from '@/lib/api-client';
+import { apiFetch } from '@/lib/api-client';
+import { StatCard } from '@/components/ui/stat-card';
 
 interface AttendanceSummary {
   percentage: number;
@@ -26,7 +27,7 @@ interface AnnouncementView {
 }
 
 const DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-const TODAY_CODE = DAY_ORDER[(new Date().getDay() + 6) % 7]; // JS Sunday=0 -> map to MON..SUN order
+const TODAY_CODE = DAY_ORDER[(new Date().getDay() + 6) % 7];
 
 export default function StudentDashboardPage() {
   const { accessToken, profile } = useAuth();
@@ -46,29 +47,20 @@ export default function StudentDashboardPage() {
   }, [accessToken, profile]);
 
   return (
-    <main className="p-8">
-      <h1 className="mb-1 text-xl font-semibold">Welcome back{profile?.enrollmentNo ? `, ${profile.enrollmentNo}` : ''}</h1>
-      <p className="mb-6 text-sm text-slate-500">{profile?.email}</p>
+    <main className="p-6 lg:p-10">
+      <p className="mb-1 font-data text-xs uppercase tracking-wide text-slate-400">{profile?.enrollmentNo}</p>
+      <h1 className="mb-1 font-serif text-2xl font-semibold text-slate-900">Welcome back</h1>
+      <p className="mb-8 text-sm text-slate-500">{profile?.email}</p>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Link href="/student/attendance" className="rounded-lg border border-slate-200 p-4 hover:border-slate-400">
-          <p className="text-sm text-slate-500">Attendance</p>
-          <p className="text-2xl font-semibold">{attendance ? `${attendance.percentage}%` : '—'}</p>
-          {attendance?.isLow && <p className="text-xs text-red-600">Below threshold</p>}
-        </Link>
-        <Link href="/student/results" className="rounded-lg border border-slate-200 p-4 hover:border-slate-400">
-          <p className="text-sm text-slate-500">CGPA</p>
-          <p className="text-2xl font-semibold">{grades ? grades.cgpa.toFixed(2) : '—'}</p>
-        </Link>
-        <Link href="/student/timetable" className="rounded-lg border border-slate-200 p-4 hover:border-slate-400">
-          <p className="text-sm text-slate-500">Today's Classes</p>
-          <p className="text-2xl font-semibold">{todaySlots.length}</p>
-        </Link>
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard href="/student/attendance" label="Attendance" value={attendance ? `${attendance.percentage}%` : '—'} hint={attendance?.isLow ? 'Below threshold' : undefined} />
+        <StatCard href="/student/results" label="CGPA" value={grades ? grades.cgpa.toFixed(2) : '—'} />
+        <StatCard href="/student/timetable" label="Today's Classes" value={String(todaySlots.length)} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <div>
-          <h2 className="mb-2 font-medium">Today's Schedule</h2>
+          <h2 className="mb-3 font-serif text-lg font-semibold text-slate-900">Today's Schedule</h2>
           {todaySlots.length === 0 ? (
             <p className="text-sm text-slate-500">No classes scheduled today.</p>
           ) : (
@@ -76,10 +68,10 @@ export default function StudentDashboardPage() {
               {todaySlots
                 .sort((a, b) => a.startTime.localeCompare(b.startTime))
                 .map((s, i) => (
-                  <div key={i} className="rounded-lg border border-slate-200 p-3 text-sm">
-                    <p className="font-medium">{s.section.course.title}</p>
-                    <p className="text-slate-500">
-                      {s.startTime}-{s.endTime} · Room {s.room.floor.block.name}-{s.room.label}
+                  <div key={i} className="ledger-card p-3 text-sm">
+                    <p className="font-medium text-slate-900">{s.section.course.title}</p>
+                    <p className="font-data text-xs text-slate-500">
+                      {s.startTime}–{s.endTime} · {s.room.floor.block.name}-{s.room.label}
                     </p>
                   </div>
                 ))}
@@ -88,20 +80,20 @@ export default function StudentDashboardPage() {
         </div>
 
         <div>
-          <h2 className="mb-2 font-medium">Recent Announcements</h2>
+          <h2 className="mb-3 font-serif text-lg font-semibold text-slate-900">Recent Announcements</h2>
           {announcements.length === 0 ? (
             <p className="text-sm text-slate-500">No announcements yet.</p>
           ) : (
             <div className="space-y-2">
               {announcements.map((a) => (
-                <div key={a.id} className="rounded-lg border border-slate-200 p-3 text-sm">
-                  <p className="font-medium">{a.title}</p>
+                <div key={a.id} className="ledger-card p-3 text-sm">
+                  <p className="font-medium text-slate-900">{a.title}</p>
                   <p className="text-xs text-slate-400">{new Date(a.createdAt).toLocaleDateString()}</p>
                 </div>
               ))}
             </div>
           )}
-          <Link href="/student/notifications" className="mt-2 inline-block text-sm text-blue-600 underline">
+          <Link href="/student/notifications" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
             View all
           </Link>
         </div>

@@ -103,5 +103,14 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [ ] Follow-up: book reservation fulfillment (PENDING → FULFILLED on physical pickup) isn't wired into the librarian UI yet — only APPROVED/REJECTED clearance actions are.
 - [ ] Follow-up: a broader UI/UX polish pass (visual design, not just functional dropdowns) is still open — this round focused on fixing broken/unusable flows first.
 
+## 12. Visual UI/UX overhaul — "Collegiate Ledger" theme
+- [x] Built a distinctive design system grounded in CUST's own crest colors (deep navy `#14213D` + crimson ribbon-red `#A3182A`) instead of default Tailwind slate/blue — see design tokens in `globals.css`.
+- [x] Typography: Source Serif 4 for all headings (academic/transcript feel), Inter for body/UI, IBM Plex Mono for record identifiers (course codes, enrollment numbers) — loaded via `next/font/google` in `layout.tsx`.
+- [x] **High-leverage move**: remapped Tailwind v4's `slate`/`red`/`green`/`yellow`/`blue` color scales via `@theme` in `globals.css` — since every page already uses these exact utility classes, this single change re-skins the whole app (all ~40 pages) with richer, jewel-toned colors without editing each file individually.
+- [x] Signature element: `.ribbon-badge` — a notched banner shape (echoes the crest's "CUST" ribbon) used for status tags, via the new `<Ribbon>` component.
+- [x] Hand-rewrote the highest-leverage surfaces in full: `RoleLayout` (now a dark-navy sidebar with the crest, ribbon role tag, active-state indicator — and fully responsive: collapses to a hamburger-triggered drawer below `lg`), the login page (premium split-panel layout, hidden identity panel on mobile), all 4 role dashboards (Admin/Teacher/Student/Librarian, using new `<QuickLinkCard>`/`<StatCard>` components), and the student Results page (ledger-card styling, ribbon SGPA badges, mono course codes).
+- [x] Accessibility/quality floor per the design brief: visible `:focus-visible` outlines sitewide, `prefers-reduced-motion` respected, responsive down to mobile on every rewritten surface.
+- [ ] Follow-up: the ~35 pages not individually rewritten (attendance rosters, library, invoices, complaints, requests, etc.) inherit the new color palette and fonts automatically via the theme remap, but still use the older generic card/spacing patterns rather than `.ledger-card`/`<Ribbon>` — a further pass to apply the shared components everywhere would make the whole app fully consistent, not just re-colored.
+
 ---
-**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions), then the broader visual UI/UX polish pass.
+**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions), then extending the hand-crafted theme treatment to the remaining pages.

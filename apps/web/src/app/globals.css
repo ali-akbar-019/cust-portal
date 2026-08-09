@@ -1,1 +1,133 @@
 @import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────
+   CUST PORTAL — "Collegiate Ledger" design system
+   Grounded in the university's own crest: deep navy + crimson
+   ribbon, rendered as a warm academic-records aesthetic (think
+   transcripts and registrar ledgers, not a generic SaaS dashboard).
+   ───────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-display), ui-serif, Georgia, serif;
+  --font-mono: var(--font-data), ui-monospace, monospace;
+
+  /* Neutral scale — remapped from Tailwind's default cool "slate" to a
+     warm, navy-leaning ink scale. Every page in the app already uses
+     bg-slate-*/text-slate-*/border-slate-* utilities, so this single
+     remap re-skins the entire product consistently. */
+  --color-slate-50: #F7F6F2;
+  --color-slate-100: #EEEDE7;
+  --color-slate-200: #DEDCD3;
+  --color-slate-300: #C3C0B4;
+  --color-slate-400: #93927E;
+  --color-slate-500: #6B6B5C;
+  --color-slate-600: #4A4A42;
+  --color-slate-700: #33342F;
+  --color-slate-800: #202339;
+  --color-slate-900: #14213D;
+  --color-slate-950: #0C1526;
+
+  /* Crimson — the crest's ribbon red, used for destructive/attention
+     actions and the ribbon-badge signature element. */
+  --color-red-50: #FBEBEA;
+  --color-red-100: #F3CFCE;
+  --color-red-500: #B3272C;
+  --color-red-600: #A3182A;
+  --color-red-700: #841323;
+
+  /* Deep emerald — success/paid states, a jewel tone rather than a
+     stock traffic-light green. */
+  --color-green-50: #E9F3EC;
+  --color-green-100: #CBE4D2;
+  --color-green-600: #1F6F4A;
+  --color-green-700: #185939;
+
+  /* Warm gold — pending/in-progress states, echoes a wax-seal gold. */
+  --color-yellow-50: #FBF3E4;
+  --color-yellow-100: #F3E1BD;
+  --color-yellow-400: #C79A47;
+  --color-yellow-500: #B8862E;
+
+  /* Sapphire — links and informational accents, distinct from the
+     navy ink scale so links stay legible against dark surfaces. */
+  --color-blue-50: #EAF0FA;
+  --color-blue-100: #CBDBF2;
+  --color-blue-600: #2455A4;
+  --color-blue-700: #1D4685;
+
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.125rem;
+
+  --shadow-sm: 0 1px 2px 0 rgb(20 33 61 / 0.06);
+  --shadow-md: 0 4px 14px -2px rgb(20 33 61 / 0.10), 0 2px 6px -2px rgb(20 33 61 / 0.06);
+  --shadow-lg: 0 12px 28px -6px rgb(20 33 61 / 0.16), 0 4px 10px -4px rgb(20 33 61 / 0.08);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+  body {
+    background-color: var(--color-slate-50);
+    color: var(--color-slate-800);
+    /* faint radial warmth in the top-left, kept subtle — restraint per the
+       design brief: one accent, not a decorated background */
+    background-image: radial-gradient(circle at 12% 0%, rgb(20 33 61 / 0.035), transparent 45%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-slate-900);
+  }
+  /* visible keyboard focus everywhere — quality floor, not optional */
+  :focus-visible {
+    outline: 2px solid var(--color-red-600);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: var(--color-red-100);
+    color: var(--color-slate-900);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Data/record text — course codes, enrollment numbers, ISBNs, section IDs.
+     Signals "this is a record identifier" the way a ledger would. */
+  .font-data {
+    font-family: var(--font-mono);
+    letter-spacing: 0.01em;
+  }
+
+  /* Ribbon badge — the signature element, echoing the crest's "CUST" banner.
+     A notched banner shape instead of a generic rounded pill. */
+  .ribbon-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.85rem;
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    clip-path: polygon(6% 0%, 100% 0%, 94% 100%, 0% 100%);
+  }
+
+  .ledger-card {
+    background: white;
+    border: 1px solid var(--color-slate-200);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+}
