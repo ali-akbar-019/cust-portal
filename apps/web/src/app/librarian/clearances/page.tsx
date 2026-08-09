@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
+import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { Ribbon } from '@/components/ui/ribbon';
 
 interface ClearanceRequest {
   id: string;
@@ -37,31 +39,45 @@ export default function LibrarianClearancesPage() {
   }
 
   return (
-    <main className="p-8">
-      <h1 className="mb-4 text-xl font-semibold">Pending Clearance Requests</h1>
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
-      {requests.length === 0 && <p className="text-sm text-slate-500">No pending requests.</p>}
+    <main className="p-6 lg:p-10">
+      <PageHeader
+        eyebrow="Library"
+        title="Pending Clearance Requests"
+        subtitle="Students requesting end-of-term library clearance. Approve once they have no outstanding books or dues."
+        action={<Ribbon tone="gold">{requests.length} pending</Ribbon>}
+      />
 
-      <div className="max-w-lg space-y-3">
-        {requests.map((r) => (
-          <div key={r.id} className="flex items-center justify-between rounded-lg border border-slate-200 p-4">
-            <div>
-              <p className="font-medium">{r.student.enrollmentNo}</p>
-              <p className="text-xs text-slate-500">
-                {r.student.user.email} · requested {new Date(r.requestedAt).toLocaleDateString()}
-              </p>
+      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+
+      {requests.length === 0 ? (
+        <EmptyState title="No pending requests" hint="The clearance queue is clear. New requests from students will appear here." />
+      ) : (
+        <div className="max-w-2xl space-y-3">
+          {requests.map((r) => (
+            <div key={r.id} className="ledger-card flex flex-wrap items-center justify-between gap-3 p-5">
+              <div className="min-w-0">
+                <p className="font-data font-medium text-slate-900">{r.student.enrollmentNo}</p>
+                <p className="text-sm text-slate-500">{r.student.user.email}</p>
+                <p className="mt-0.5 text-xs text-slate-400">Requested {new Date(r.requestedAt).toLocaleString()}</p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  onClick={() => resolve(r.id, 'APPROVED')}
+                  className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+                >
+                  Approve
+                </button>
+                <button
+                  onClick={() => resolve(r.id, 'REJECTED')}
+                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                >
+                  Reject
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button onClick={() => resolve(r.id, 'APPROVED')} className="rounded-md bg-green-600 px-3 py-1.5 text-sm text-white">
-                Approve
-              </button>
-              <button onClick={() => resolve(r.id, 'REJECTED')} className="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white">
-                Reject
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }

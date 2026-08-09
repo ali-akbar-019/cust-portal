@@ -49,7 +49,7 @@ export default function StudentTimetablePage() {
   // build the calendar grid: rows = distinct start times across the week, columns = days
   const uniqueTimes = [...new Set(slots.map((s) => s.startTime))].sort();
   const courseColorMap = new Map<string, string>();
-  [...new Set(slots.map((s) => s.section.course.code))].forEach((code, i) => courseColorMap.set(code, COURSE_COLORS[i % COURSE_COLORS.length]));
+  [...new Set(slots.map((s) => s.section.course.code))].forEach((code, i) => courseColorMap.set(code, COURSE_COLORS[i % COURSE_COLORS.length] ?? 'bg-slate-900 text-white'));
 
   function slotAt(day: string, time: string) {
     return slots.find((s) => s.day === day && s.startTime === time);

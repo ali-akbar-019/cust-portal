@@ -26,8 +26,8 @@ export default function AdminUsersPage() {
       .then((depts) => {
         setDepartments(depts);
         if (depts.length > 0) {
-          setStudentForm((prev) => ({ ...prev, departmentId: depts[0].id }));
-          setTeacherForm((prev) => ({ ...prev, departmentId: depts[0].id }));
+          setStudentForm((prev) => ({ ...prev, departmentId: depts[0]?.id ?? '' }));
+          setTeacherForm((prev) => ({ ...prev, departmentId: depts[0]?.id ?? '' }));
         }
       })
       .catch(() => {});

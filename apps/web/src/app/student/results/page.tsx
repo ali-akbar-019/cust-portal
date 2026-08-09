@@ -43,7 +43,7 @@ export default function StudentResultsPage() {
     apiFetch<Breakdown>(`/grades/student/${profile.studentId}`, { token: accessToken })
       .then((res) => {
         setData(res);
-        if (res.semesters.length > 0) setOpenTerm(res.semesters[0].term);
+        if (res.semesters.length > 0) setOpenTerm(res.semesters[0]?.term ?? null);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load results'));
   }, [accessToken, profile, authLoading]);
