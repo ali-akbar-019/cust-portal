@@ -1,11 +1,24 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { prisma } from '@cust/database';
 import { ResolveClearanceDto } from './dto/resolve-clearance.dto';
+import { CreateBookDto } from './dto/create-book.dto';
 
 @Injectable()
 export class LibraryService {
   findAllBooks() {
     return prisma.book.findMany({ orderBy: { title: 'asc' } });
+  }
+
+  createBook(dto: CreateBookDto) {
+    return prisma.book.create({
+      data: {
+        title: dto.title,
+        author: dto.author,
+        isbn: dto.isbn,
+        totalCopies: dto.totalCopies,
+        availableCopies: dto.totalCopies,
+      },
+    });
   }
 
   // Reserving decrements availableCopies immediately (optimistic — treats a

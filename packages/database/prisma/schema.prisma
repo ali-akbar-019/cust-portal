@@ -18,6 +18,7 @@ enum Role {
   STUDENT
   TEACHER
   ADMIN
+  LIBRARIAN
 }
 
 model User {
@@ -31,10 +32,17 @@ model User {
   student      Student?
   teacher      Teacher?
   admin        Admin?
+  librarian    Librarian?
   announcements Announcement[]
 }
 
 model Admin {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model Librarian {
   id     String @id @default(uuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id])

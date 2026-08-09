@@ -10,6 +10,7 @@ const ROLE_PREFIXES: Record<string, string> = {
   '/student': 'STUDENT',
   '/teacher': 'TEACHER',
   '/admin': 'ADMIN',
+  '/librarian': 'LIBRARIAN',
 };
 
 export function middleware(request: NextRequest) {
@@ -25,7 +26,8 @@ export function middleware(request: NextRequest) {
   }
   if (role !== ROLE_PREFIXES[matchedPrefix]) {
     // logged in, but wrong role for this area -> send to their own dashboard
-    const fallback = role === 'ADMIN' ? '/admin/dashboard' : role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard';
+    const fallback =
+      role === 'ADMIN' ? '/admin/dashboard' : role === 'TEACHER' ? '/teacher/dashboard' : role === 'LIBRARIAN' ? '/librarian/dashboard' : '/student/dashboard';
     return NextResponse.redirect(new URL(fallback, request.url));
   }
   return NextResponse.next();

@@ -104,6 +104,14 @@ async function seedUsersAndTeachers(departments: { id: string; code: string }[])
   });
   await prisma.admin.upsert({ where: { userId: adminUser.id }, update: {}, create: { userId: adminUser.id } });
 
+  // primary librarian
+  const librarianUser = await prisma.user.upsert({
+    where: { email: 'librarian@cust.edu.pk' },
+    update: {},
+    create: { email: 'librarian@cust.edu.pk', passwordHash, role: 'LIBRARIAN' },
+  });
+  await prisma.librarian.upsert({ where: { userId: librarianUser.id }, update: {}, create: { userId: librarianUser.id } });
+
   const teachers: { id: string; departmentId: string; email: string }[] = [];
   const designations = ['Lecturer', 'Assistant Professor', 'Associate Professor'];
 
@@ -610,9 +618,10 @@ async function main() {
   await seedComplaintsRequestsFeedback(students, sections, enrollments);
 
   console.log('\n✅ Seed complete. All accounts use password:', PASSWORD);
-  console.log('   Admin:   admin@cust.edu.pk');
-  console.log('   Teacher: teacher@cust.edu.pk (SE)');
-  console.log('   Student: student@cust.edu.pk (SE)');
+  console.log('   Admin:     admin@cust.edu.pk');
+  console.log('   Librarian: librarian@cust.edu.pk');
+  console.log('   Teacher:   teacher@cust.edu.pk (SE)');
+  console.log('   Student:   student@cust.edu.pk (SE)');
   console.log(`   + ${teachers.length - 1} more teachers, ${students.length - 1} more students across CS/EE/SE`);
 }
 

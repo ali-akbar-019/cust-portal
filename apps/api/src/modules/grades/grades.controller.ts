@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { GradesService } from './grades.service';
+import { TranscriptService } from './transcript.service';
 import { UpsertGradeDto } from './dto/upsert-grade.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -10,7 +12,10 @@ import { ensureOwnStudentOrElevated } from '../../common/guards/self-or-elevated
 @UseGuards(JwtAuthGuard)
 @Controller('grades')
 export class GradesController {
-  constructor(private readonly gradesService: GradesService) {}
+  constructor(
+    private readonly gradesService: GradesService,
+    private readonly transcriptService: TranscriptService,
+  ) {}
 
   @UseGuards(RolesGuard)
   @Roles('TEACHER', 'ADMIN')
@@ -23,5 +28,20 @@ export class GradesController {
   async getBreakdown(@Param('studentId') studentId: string, @CurrentUser() user: AuthenticatedUser) {
     await ensureOwnStudentOrElevated(user, studentId);
     return this.gradesService.getStudentBreakdown(studentId);
+  }
+
+  @Get('student/:studentId/transcript')
+  async downloadTranscript(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    await ensureOwnStudentOrElevated(user, studentId);
+    const pdf = await this.transcriptService.generateTranscript(studentId);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="transcript-${studentId}.pdf"`,
+    });
+    res.send(pdf);
   }
 }

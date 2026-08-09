@@ -40,4 +40,15 @@ export class TeachersService {
       include: { room: { include: { floor: { include: { block: true } } } }, section: { include: { course: true } } },
     });
   }
+
+  // All sections this teacher teaches — feeds the "pick a section" dropdown
+  // on the attendance/grades/assignments pages instead of asking the
+  // teacher to type a section ID they'd have no way of knowing.
+  async getMySections(teacherId: string) {
+    const sections = await prisma.section.findMany({
+      where: { teacherId },
+      include: { course: true, _count: { select: { enrollments: { where: { status: 'ACTIVE' } } } } },
+    });
+    return sections.map((s) => ({ ...s, enrolledCount: s._count.enrollments }));
+  }
 }

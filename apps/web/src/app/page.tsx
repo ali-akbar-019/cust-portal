@@ -15,7 +15,7 @@ export default function HomePage() {
       return;
     }
     const destination =
-      role === 'ADMIN' ? '/admin/dashboard' : role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard';
+      role === 'ADMIN' ? '/admin/dashboard' : role === 'TEACHER' ? '/teacher/dashboard' : role === 'LIBRARIAN' ? '/librarian/dashboard' : '/student/dashboard';
     router.replace(destination);
   }, [role, isLoading, router]);
 

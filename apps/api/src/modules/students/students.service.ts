@@ -39,12 +39,37 @@ export class StudentsService {
     });
   }
 
+  // Aggregates timetable slots across every section the student is
+  // actively enrolled in — a student takes multiple courses, so their
+  // "my timetable" view is the union of each enrolled section's slots,
+  // not a single section (the legacy Student.sectionId field is not used
+  // for this — see the schema comment on that field).
   async getTimetable(studentId: string) {
-    const student = await this.findById(studentId);
-    if (!student.sectionId) return [];
-    return prisma.timetableSlot.findMany({
-      where: { sectionId: student.sectionId },
-      include: { room: { include: { floor: { include: { block: true } } } }, section: { include: { course: true, teacher: { include: { user: true } } } } },
+    const enrollments = await prisma.enrollment.findMany({
+      where: { studentId, status: 'ACTIVE' },
+      select: { sectionId: true },
     });
+    const sectionIds = enrollments.map((e) => e.sectionId);
+    if (sectionIds.length === 0) return [];
+
+    return prisma.timetableSlot.findMany({
+      where: { sectionId: { in: sectionIds } },
+      include: {
+        room: { include: { floor: { include: { block: true } } } },
+        section: { include: { course: true, teacher: { include: { user: true } } } },
+      },
+      orderBy: [{ day: 'asc' }, { startTime: 'asc' }],
+    });
+  }
+
+  // All sections the student is actively enrolled in — used by the
+  // frontend to populate "pick a course" dropdowns (assignments, feedback)
+  // instead of asking the student to type a section ID.
+  async getMySections(studentId: string) {
+    const enrollments = await prisma.enrollment.findMany({
+      where: { studentId, status: 'ACTIVE' },
+      include: { section: { include: { course: true, teacher: { include: { user: true } } } } },
+    });
+    return enrollments.map((e) => e.section);
   }
 }

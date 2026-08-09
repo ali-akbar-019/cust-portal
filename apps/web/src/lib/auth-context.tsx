@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfile(data.accessToken);
 
     const destination =
-      data.role === 'ADMIN' ? '/admin/dashboard' : data.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard';
+      data.role === 'ADMIN' ? '/admin/dashboard' : data.role === 'TEACHER' ? '/teacher/dashboard' : data.role === 'LIBRARIAN' ? '/librarian/dashboard' : '/student/dashboard';
     router.push(destination);
   }
 

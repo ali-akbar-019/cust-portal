@@ -86,5 +86,22 @@ Legend: [x] done · [~] in progress · [ ] not started
 - [x] `admin@cust.edu.pk` / `teacher@cust.edu.pk` / `student@cust.edu.pk` (all in SE) are preserved as the primary accounts Ali already has credentials for — the rest of the seeded users follow a predictable email pattern per department.
 - [x] Script is idempotent (safe to re-run — uses upsert or findFirst-then-create checks throughout) so `npx prisma db seed` can be run again without duplicating data.
 
+## 11. Version 2 — UX overhaul + Librarian role
+- [x] **Fixed root cause of "stuck loading" bugs**: `StudentsService.getTimetable` depended on the legacy unused `Student.sectionId` field. Rewrote it to aggregate timetable slots across all active `Enrollment` records instead — this is the actual bug behind the student timetable page hanging forever, since the frontend guard on the never-populated `sectionId` meant the fetch never fired.
+- [x] Added the same resilience pattern (stop "Loading..." and show a clear error instead of hanging) to student attendance/timetable and teacher timetable pages.
+- [x] **Student dashboard** — was empty, now shows attendance %, CGPA, today's schedule, and recent announcements as clickable summary cards.
+- [x] **Student Results page** — rewritten with collapsible per-semester sections (SGPA each), overall CGPA, and a working **Download Transcript** button.
+- [x] **Transcript PDF generation** — new `transcript.service.ts` (pdfkit) streams a real downloadable PDF with per-semester course tables and grades.
+- [x] **GradesService.getStudentBreakdown** rewritten to group courses by term (via Enrollment→Section→term) instead of a flat list — powers both the Results page and the transcript.
+- [x] New endpoints for dropdown-driven UX (replacing "type an ID" inputs): `GET /students/:id/sections`, `GET /teachers/:id/sections`, `GET /sections/:id/roster`.
+- [x] **Student Enrollment page** — department text-input replaced with a real dropdown (defaults to the student's own department).
+- [x] **Student Assignments page** — "Section ID" input replaced with a dropdown of the student's actual enrolled courses.
+- [x] **Teacher Attendance page** — "Section ID" input replaced with a dropdown of the teacher's assigned sections; added "mark all present/absent" shortcuts.
+- [x] **Teacher Grades page** — raw Student ID / Course ID inputs replaced with section → roster dropdowns (course id is derived automatically from the selected section).
+- [x] **Librarian role introduced end-to-end**: `LIBRARIAN` added to the Role enum + a minimal `Librarian` profile model; library clearance/book endpoints now accept `ADMIN` or `LIBRARIAN`; new `POST /library/books` endpoint; seeded `librarian@cust.edu.pk` account; full frontend — `/librarian/dashboard`, `/librarian/books` (catalog + add book), `/librarian/clearances` (approve/reject), sidebar layout, and login-redirect wiring in both `auth-context.tsx` and `middleware.ts`.
+- [ ] Follow-up: payments/invoices were explicitly left as-is per Ali's request ("keep them simple like how it's rn").
+- [ ] Follow-up: book reservation fulfillment (PENDING → FULFILLED on physical pickup) isn't wired into the librarian UI yet — only APPROVED/REJECTED clearance actions are.
+- [ ] Follow-up: a broader UI/UX polish pass (visual design, not just functional dropdowns) is still open — this round focused on fixing broken/unusable flows first.
+
 ---
-**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions).
+**Next chunk to build:** CI (typecheck + lint on push via GitHub Actions), then the broader visual UI/UX polish pass.

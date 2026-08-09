@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 
+interface MySection {
+  id: string;
+  course: { title: string; code: string };
+}
 interface AssignmentView {
   id: string;
   title: string;
@@ -14,16 +18,22 @@ interface AssignmentView {
 
 export default function StudentAssignmentsPage() {
   const { accessToken, profile } = useAuth();
+  const [mySections, setMySections] = useState<MySection[]>([]);
   const [sectionId, setSectionId] = useState('');
   const [assignments, setAssignments] = useState<AssignmentView[]>([]);
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // default to the student's own section if we have one resolved
   useEffect(() => {
-    if (profile?.sectionId) setSectionId(profile.sectionId);
-  }, [profile]);
+    if (!accessToken || !profile?.studentId) return;
+    apiFetch<MySection[]>(`/students/${profile.studentId}/sections`, { token: accessToken })
+      .then((sections) => {
+        setMySections(sections);
+        if (sections.length > 0) setSectionId(sections[0].id);
+      })
+      .catch(() => {});
+  }, [accessToken, profile]);
 
   async function load() {
     if (!sectionId || !accessToken) return;
@@ -62,7 +72,7 @@ export default function StudentAssignmentsPage() {
       });
       setStatus('Submitted successfully.');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Submission failed — check the deadline hasn\'t passed');
+      setError(err instanceof ApiError ? err.message : "Submission failed — check the deadline hasn't passed");
     } finally {
       setUploadingFor(null);
     }
@@ -72,20 +82,24 @@ export default function StudentAssignmentsPage() {
     <main className="p-8">
       <h1 className="mb-4 text-xl font-semibold">Assignments</h1>
 
-      <div className="mb-4 flex max-w-md gap-2">
-        <input
+      <div className="mb-4 max-w-md">
+        <select
           value={sectionId}
           onChange={(e) => setSectionId(e.target.value)}
-          placeholder="Section ID"
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
-        <button onClick={load} className="rounded-md bg-slate-900 px-4 py-2 text-sm text-white">
-          Load
-        </button>
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+        >
+          {mySections.length === 0 && <option value="">No enrolled courses yet</option>}
+          {mySections.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.course.title} ({s.course.code})
+            </option>
+          ))}
+        </select>
       </div>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
       {status && <p className="mb-3 text-sm text-green-600">{status}</p>}
+      {assignments.length === 0 && sectionId && <p className="text-sm text-slate-500">No assignments posted for this course yet.</p>}
 
       <div className="max-w-xl space-y-3">
         {assignments.map((a) => {

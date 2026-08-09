@@ -16,18 +16,23 @@ interface SlotView {
 const DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 export default function StudentTimetablePage() {
-  const { accessToken, profile } = useAuth();
+  const { accessToken, profile, isLoading: authLoading } = useAuth();
   const [slots, setSlots] = useState<SlotView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!accessToken || !profile?.sectionId) return;
-    apiFetch<SlotView[]>(`/timetable/section/${profile.sectionId}`, { token: accessToken })
+    if (authLoading || !accessToken) return;
+    if (!profile?.studentId) {
+      setError('Could not resolve your student profile. Try logging out and back in.');
+      setIsLoading(false);
+      return;
+    }
+    apiFetch<SlotView[]>(`/students/${profile.studentId}/timetable`, { token: accessToken })
       .then(setSlots)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load timetable'))
       .finally(() => setIsLoading(false));
-  }, [accessToken, profile]);
+  }, [accessToken, profile, authLoading]);
 
   if (isLoading) return <main className="p-8 text-sm text-slate-500">Loading timetable...</main>;
   if (error) return <main className="p-8 text-sm text-red-600">{error}</main>;
@@ -35,6 +40,7 @@ export default function StudentTimetablePage() {
   return (
     <main className="p-8">
       <h1 className="mb-6 text-xl font-semibold">My Timetable</h1>
+      {slots.length === 0 && <p className="text-sm text-slate-500">No timetable slots yet — check back after enrollment/scheduling is finalized.</p>}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {DAY_ORDER.map((day) => {
           const daySlots = slots.filter((s) => s.day === day).sort((a, b) => a.startTime.localeCompare(b.startTime));

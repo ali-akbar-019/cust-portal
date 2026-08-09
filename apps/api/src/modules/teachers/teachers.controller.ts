@@ -27,6 +27,11 @@ export class TeachersController {
     return this.teachersService.getTimetable(id);
   }
 
+  @Get(':id/sections')
+  getMySections(@Param('id') id: string) {
+    return this.teachersService.getMySections(id);
+  }
+
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
   @Post()

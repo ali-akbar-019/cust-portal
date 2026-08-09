@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { LibraryService } from './library.service';
 import { ReserveBookDto } from './dto/reserve-book.dto';
 import { ResolveClearanceDto } from './dto/resolve-clearance.dto';
+import { CreateBookDto } from './dto/create-book.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -17,6 +18,14 @@ export class LibraryController {
   @Get('books')
   findAllBooks() {
     return this.libraryService.findAllBooks();
+  }
+
+  // Librarians run the catalog day-to-day; admins can too for oversight.
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'LIBRARIAN')
+  @Post('books')
+  createBook(@Body() dto: CreateBookDto) {
+    return this.libraryService.createBook(dto);
   }
 
   @UseGuards(RolesGuard)
@@ -50,14 +59,14 @@ export class LibraryController {
   }
 
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'LIBRARIAN')
   @Get('clearance/pending')
   listPending() {
     return this.libraryService.listPendingClearances();
   }
 
   @UseGuards(RolesGuard)
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'LIBRARIAN')
   @Post('clearance/:id/resolve')
   resolveClearance(@Param('id') id: string, @Body() dto: ResolveClearanceDto) {
     return this.libraryService.resolveClearance(id, dto);

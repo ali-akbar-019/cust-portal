@@ -16,18 +16,23 @@ interface SlotView {
 const DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 export default function TeacherTimetablePage() {
-  const { accessToken, profile } = useAuth();
+  const { accessToken, profile, isLoading: authLoading } = useAuth();
   const [slots, setSlots] = useState<SlotView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!accessToken || !profile?.teacherId) return;
+    if (authLoading || !accessToken) return;
+    if (!profile?.teacherId) {
+      setError('Could not resolve your teacher profile. Try logging out and back in.');
+      setIsLoading(false);
+      return;
+    }
     apiFetch<SlotView[]>(`/teachers/${profile.teacherId}/timetable`, { token: accessToken })
       .then(setSlots)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load timetable'))
       .finally(() => setIsLoading(false));
-  }, [accessToken, profile]);
+  }, [accessToken, profile, authLoading]);
 
   if (isLoading) return <main className="p-8 text-sm text-slate-500">Loading timetable...</main>;
   if (error) return <main className="p-8 text-sm text-red-600">{error}</main>;

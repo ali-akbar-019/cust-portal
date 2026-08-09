@@ -31,6 +31,12 @@ export class StudentsController {
     return this.studentsService.getTimetable(id);
   }
 
+  @Get(':id/sections')
+  async getMySections(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    await ensureOwnStudentOrElevated(user, id);
+    return this.studentsService.getMySections(id);
+  }
+
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
   @Post()
