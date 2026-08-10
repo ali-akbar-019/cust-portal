@@ -230,4 +230,32 @@ Applied the next round of direct feedback across both apps.
 
 ---
 
+## 18. Feedback round — real weekly timetable, richer seed, read notices disappear
+
+**Timetable now looks like a real weekly grid (not everything at 08:00)**
+- The generator and seed previously picked the earliest free slot, so every course landed "at the same time" (08:00) across different days. Both now prefer the **quietest (day × time) cell** and then a **per-section rotation across times + days** (section *k* prefers slot *k % N* and day *k % D*), so consecutive courses stagger onto different hours — verified: SE/CS/EE/DS classes now fill Mon–Fri from 08:00 up to 15:30, respecting each department's own day window (EE 09:00–17:00, DS 08:30–16:30).
+- Seed lab rooms were capacity 30 while sections are 40, silently stranding every lab course — lab rooms now seat 40.
+- Re-running **Generate** still replaces a department's slots atomically (no duplicates) from the previous round.
+
+**Complete, richer seed** (`packages/database/prisma/seed.ts`)
+- **Reset-first** seeding: every table is wiped in FK order at the start, so re-running `pnpm --filter @cust/database prisma:seed` always yields a clean, repeatable dataset instead of stacking stale rows.
+- **4 departments** (SE, CS, EE, DS) with realistic per-dept timetabling windows.
+- **12 teachers** with real names/designations (Lecturer → Professor), **32 students** with Pakistani names and enrollment numbers spread across semesters 1/3/5/7.
+- **24 sections** (one per course, 6 courses × 4 depts, incl. lab courses) — every student holds a full 6-course load (192 enrollments).
+- **Grades** for the exact components the teacher grade sheet uses (quiz1 10, quiz2 10, assignment 20, midterm 30, final 30 = 960 rows), per-student "ability" so some students are strong and others scrape by.
+- **Attendance**: last 30 weekdays with per-student habits (50–95% present, chronic absentees included) — 5,760 rows.
+- **Assignments**: two per section (one past + graded, one upcoming) with sample submissions.
+- **Invoices** 3/student (paid semester fee, pending transport fee, library fine — overdue for some). **Library**: 18 books, reservations in PENDING/FULFILLED/CANCELLED, 3 clearance requests. **Announcements**: 9 across ALL/DEPARTMENT/SECTION with staggered timestamps (fresh ones show unread). Complaints, requests and feedback across all statuses.
+- Heavy loops use `createMany` so the whole seed finishes in well under a minute.
+
+**Read notices now disappear**
+- The bell shows only **unread** announcements (click-to-read removes them; "Mark all read" clears the list; badge counts unread only).
+- The student/teacher/librarian notice page shows unread cards first; read ones move out of the list and are archived behind a **"Show previously read (N)"** toggle. The **admin announcements page keeps the authoritative record of everything** — nothing is ever deleted from the DB, it only leaves a user's inbox.
+
+**Typecheck/build**: `@cust/api` and `@cust/web` both `typecheck` clean; seed runs end-to-end. `next build` compiles all static pages (the standalone `EPERM: symlink` Windows trace-copy issue remains pre-existing, `output: 'standalone'` is Docker-required).
+
+**Schema note**: still zero schema changes — read receipts remain client-side (`localStorage` keyed per `userId`), seeded data matches the existing models exactly.
+
+---
+
 **Still open / next candidates:** CI (TypeScript + lint on push via GitHub Actions); real payment gateway for invoices ("pay" is still a fake success); book-reservation fulfillment (PENDING → FULFILLED on pickup) in the librarian UI; enrollment-schedule admin form; transcript/letter requests producing actual PDFs; email notifications (BullMQ); server-side announcement read receipts (requires a stopped dev server for the migration); realistic production deployment.

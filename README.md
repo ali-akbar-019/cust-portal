@@ -124,7 +124,7 @@ npx prisma migrate dev --name init
 npx prisma db seed
 cd ../..
 ```
-This creates all tables and seeds: 3 departments, all 9 blocks with floors/rooms, a full 6-student-per-department dataset, a 10-book catalog, and one test account per role (see below).
+This creates all tables and seeds: 4 departments (SE/CS/EE/DS), all 9 blocks with floors/rooms, 12 named teachers (real designations), 32 named students spread across semesters 1-7, 24 course sections with a full Mon–Fri timetable at varied times, grades for every component (quiz/midterm/final), 30 weekdays of attendance, assignments + submissions, invoices, an 18-book catalog with reservations/clearances, announcements, complaints/requests and feedback — plus one test account per role (see below). Re-running the seed is safe: it resets the tables first and reseeds from scratch.
 
 ### 5. Run the app
 ```bash

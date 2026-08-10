@@ -27,10 +27,12 @@ export function AnnouncementsFeed({
   const { accessToken, profile } = useAuth();
   const [items, setItems] = useState<AnnouncementView[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showRead, setShowRead] = useState(false);
 
   const readKey = readSetKey(profile?.userId);
   const refresh = () => setItems((prev) => [...prev]);
-  const unreadCount = items.filter((a) => !isMarkedRead(readKey, a.id)).length;
+  const unreadList = items.filter((a) => !isMarkedRead(readKey, a.id));
+  const readList = items.filter((a) => isMarkedRead(readKey, a.id));
 
   useEffect(() => {
     if (!accessToken) return;
@@ -52,16 +54,16 @@ export function AnnouncementsFeed({
         title={title}
         subtitle={subtitle}
         action={
-          items.length > 0 ? (
+          unreadList.length > 0 ? (
             <button
               onClick={() => {
-                markManyRead(readKey, items.map((a) => a.id));
+                markManyRead(readKey, unreadList.map((a) => a.id));
                 refresh();
               }}
-              disabled={unreadCount === 0}
+              disabled={unreadList.length === 0}
               className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-40"
             >
-              {unreadCount === 0 ? 'All caught up' : `Mark all read (${unreadCount})`}
+              Mark all read ({unreadList.length})
             </button>
           ) : undefined
         }
@@ -69,42 +71,64 @@ export function AnnouncementsFeed({
 
       {items.length > 0 && (
         <div className="mb-6 flex items-center gap-2">
-          <Ribbon tone={unreadCount > 0 ? 'crimson' : 'emerald'}>
-            {unreadCount === 0 ? 'Everything read' : `${unreadCount} unread`}
+          <Ribbon tone={unreadList.length > 0 ? 'crimson' : 'emerald'}>
+            {unreadList.length === 0 ? 'Everything read' : `${unreadList.length} unread`}
           </Ribbon>
-          <span className="text-xs text-slate-400">{items.length} total announcements</span>
+          <span className="text-xs text-slate-400">
+            Read notices are moved out of this list — find them again below.
+          </span>
         </div>
       )}
 
-      {items.length === 0 ? (
+      {unreadList.length > 0 ? (
+        <div className="max-w-2xl space-y-3">
+          {unreadList.map((a) => (
+            <button key={a.id} onClick={() => { markRead(readKey, a.id); refresh(); }} className="block w-full text-left">
+              <article className="rounded-lg border border-blue-200 bg-blue-50/40 p-5 text-left transition hover:bg-blue-50">
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                  <p className="flex items-center gap-2 font-medium text-slate-900">
+                    <span className="h-2 w-2 rounded-full bg-red-600" aria-hidden />
+                    {a.title}
+                  </p>
+                  <Ribbon tone={a.postedBy.role === 'ADMIN' ? 'navy' : 'sapphire'}>{a.postedBy.role}</Ribbon>
+                </div>
+                <p className="mb-3 whitespace-pre-line text-sm text-slate-600">{a.message}</p>
+                <p className="text-xs text-slate-400">Posted {new Date(a.createdAt).toLocaleString()} by {a.postedBy.email}</p>
+              </article>
+            </button>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
         <EmptyState title="No announcements yet" hint="New notices from the administration and faculty will appear here." />
       ) : (
-        <div className="max-w-2xl space-y-3">
-          {items.map((a) => {
-            const read = isMarkedRead(readKey, a.id);
-            return (
-              <button
-                key={a.id}
-                onClick={() => {
-                  if (!isMarkedRead(readKey, a.id)) markRead(readKey, a.id);
-                  refresh();
-                }}
-                className={`block w-full text-left transition ${read ? '' : 'rounded-md bg-blue-50/30'}`}
-              >
-                <article className={`ledger-card p-5 ${read ? 'opacity-85' : ''}`}>
+        <EmptyState title="You\u2019re all caught up" hint="Everything in your inbox has been read. New announcements will show up here, and older ones can be reopened below." />
+      )}
+
+      {readList.length > 0 && (
+        <div className="mt-8">
+          <button
+            onClick={() => setShowRead((s) => !s)}
+            className="mb-3 text-sm font-medium text-blue-600 underline"
+          >
+            {showRead ? 'Hide' : 'Show'} previously read ({readList.length})
+          </button>
+          {showRead && (
+            <div className="max-w-2xl space-y-3 opacity-70">
+              {readList.map((a) => (
+                <article key={a.id} className="ledger-card p-5">
                   <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                    <p className="flex items-center gap-2 font-medium text-slate-900">
-                      <span className={`h-2 w-2 rounded-full ${read ? 'bg-slate-200' : 'bg-red-600'}`} aria-hidden />
+                    <p className="flex items-center gap-2 font-medium text-slate-500">
+                      <span className="h-2 w-2 rounded-full bg-slate-200" aria-hidden />
                       {a.title}
                     </p>
                     <Ribbon tone={a.postedBy.role === 'ADMIN' ? 'navy' : 'sapphire'}>{a.postedBy.role}</Ribbon>
                   </div>
-                  <p className="mb-3 whitespace-pre-line text-sm text-slate-600">{a.message}</p>
+                  <p className="mb-3 whitespace-pre-line text-sm text-slate-500">{a.message}</p>
                   <p className="text-xs text-slate-400">Posted {new Date(a.createdAt).toLocaleString()} by {a.postedBy.email}</p>
                 </article>
-              </button>
-            );
-          })}
+              ))}
+            </div>
+          )}
         </div>
       )}
     </main>

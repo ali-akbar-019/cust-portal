@@ -13,7 +13,6 @@ interface PlacedSlot {
   roomId: string;
   teacherId: string;
   sectionId: string;
-  dayPriority?: number;
 }
 
 interface SectionToPlace {
@@ -125,11 +124,21 @@ export class TimetableGeneratorService {
       (r) => r.capacity >= section.capacity && (section.requiresLab ? r.type === 'LAB' : true),
     );
 
-    // Prefer the quietest days so finished timetables spread across the
-    // whole week (Mon's seats fill first for early sections, then the next
-    // section prefers a lighter day) instead of piling every course on MON.
-    const dayCounts = new Map<Weekday, number>();
-    for (const p of placed) dayCounts.set(p.day, (dayCounts.get(p.day) ?? 0) + 1);
+    // Candidate ordering makes the finished timetable look like a real weekly
+    // grid rather than a single pile-up at 08:00:
+    //   1. quietest (day, time) cells first — spread load, not just days
+    //   2. then a per-section rotation across times + days, so early sections
+    //      don't all grab the same 08:00 column (section k prefers time slot
+    //      k % count and day k % days). This staggers every class onto a
+    //      different (day, time) until the grid genuinely fills up.
+    const timeIndexByStart = new Map(timeSlots.map((s, i) => [s.start, i]));
+    const timeRot = index % timeSlots.length;
+    const dayRot = index % DAYS.length;
+    const cellLoads = new Map<string, number>();
+    for (const p of placed) {
+      const key = `${p.day}|${p.startTime}`;
+      cellLoads.set(key, (cellLoads.get(key) ?? 0) + 1);
+    }
 
     const candidates: PlacedSlot[] = [];
     for (const day of DAYS) {
@@ -142,17 +151,24 @@ export class TimetableGeneratorService {
             roomId: room.id,
             teacherId: section.teacherId,
             sectionId: section.id,
-            dayPriority: dayCounts.get(day) ?? 0,
           });
         }
       }
     }
-    candidates.sort(
-      (a, b) =>
-        (a.dayPriority ?? 0) - (b.dayPriority ?? 0) ||
-        DAYS.indexOf(a.day) - DAYS.indexOf(b.day) ||
-        toMinutes(a.startTime) - toMinutes(b.startTime),
-    );
+    candidates.sort((a, b) => {
+      const loadA = cellLoads.get(`${a.day}|${a.startTime}`) ?? 0;
+      const loadB = cellLoads.get(`${b.day}|${b.startTime}`) ?? 0;
+      if (loadA !== loadB) return loadA - loadB;
+      const timePrefA = (timeIndexByStart.get(a.startTime) ?? 0) === timeRot ? 0 : 1;
+      const timePrefB = (timeIndexByStart.get(b.startTime) ?? 0) === timeRot ? 0 : 1;
+      if (timePrefA !== timePrefB) return timePrefA - timePrefB;
+      const dayPrefA = (DAYS.indexOf(a.day) - dayRot + DAYS.length) % DAYS.length;
+      const dayPrefB = (DAYS.indexOf(b.day) - dayRot + DAYS.length) % DAYS.length;
+      if (dayPrefA !== dayPrefB) return dayPrefA - dayPrefB;
+      const timeA = timeIndexByStart.get(a.startTime) ?? 0;
+      const timeB = timeIndexByStart.get(b.startTime) ?? 0;
+      return timeA - timeB;
+    });
 
     for (const candidate of candidates) {
       if (this.hasInMemoryClash(candidate, placed)) continue;
