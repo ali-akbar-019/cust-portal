@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api-client';
+import { isMarkedRead, markManyRead, markRead, readSetKey } from '@/lib/notification-reads';
 
 interface AnnouncementLite {
   id: string;
@@ -29,6 +30,10 @@ export function NotificationBell({ href }: { href: string }) {
   const [items, setItems] = useState<AnnouncementLite[]>([]);
   const ref = useRef<HTMLDivElement>(null);
 
+  const readKey = readSetKey(profile?.userId);
+  const unread = items.filter((a) => !isMarkedRead(readKey, a.id)).length;
+  const recent = items.slice(0, 5);
+
   useEffect(() => {
     if (!accessToken) return;
     const params = new URLSearchParams();
@@ -48,7 +53,10 @@ export function NotificationBell({ href }: { href: string }) {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  const recent = items.slice(0, 5);
+  function handleMarkAll() {
+    markManyRead(readKey, items.map((a) => a.id));
+    setItems([...items]);
+  }
 
   return (
     <div className="relative" ref={ref}>
@@ -61,9 +69,9 @@ export function NotificationBell({ href }: { href: string }) {
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
         </svg>
-        {items.length > 0 && (
+        {unread > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium text-white">
-            {items.length > 99 ? '99+' : items.length}
+            {unread > 99 ? '99+' : unread}
           </span>
         )}
       </button>
@@ -72,18 +80,45 @@ export function NotificationBell({ href }: { href: string }) {
         <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-2.5">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Announcements</p>
-            {items.length > 0 && <span className="text-[11px] text-slate-400">{items.length} total</span>}
+            <div className="flex items-center gap-3">
+              {unread > 0 && <span className="text-[11px] text-slate-400">{unread} unread</span>}
+              <button
+                onClick={handleMarkAll}
+                disabled={unread === 0}
+                className="text-[11px] font-medium text-blue-600 underline disabled:text-slate-400 disabled:no-underline"
+              >
+                Mark all read
+              </button>
+            </div>
           </div>
           <div className="scroll-area max-h-80 overflow-y-auto">
             {recent.length === 0 ? (
               <p className="px-4 py-6 text-center text-xs text-slate-400">No announcements yet.</p>
             ) : (
-              recent.map((a) => (
-                <div key={a.id} className="border-b border-slate-100 px-4 py-3 last:border-b-0">
-                  <p className="truncate text-sm font-medium text-slate-900">{a.title}</p>
-                  <p className="mt-0.5 text-[11px] text-slate-400">{timeAgo(a.createdAt)}</p>
-                </div>
-              ))
+              recent.map((a) => {
+                const read = isMarkedRead(readKey, a.id);
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => {
+                      if (!isMarkedRead(readKey, a.id)) markRead(readKey, a.id);
+                      setItems([...items]);
+                    }}
+                    className={`flex w-full items-start gap-2.5 border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50 ${read ? '' : 'bg-blue-50/40'}`}
+                  >
+                    <span
+                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${read ? 'bg-slate-200' : 'bg-red-600'}`}
+                      aria-hidden
+                    />
+                    <span className="min-w-0">
+                      <span className={`block truncate text-sm ${read ? 'font-normal text-slate-500' : 'font-medium text-slate-900'}`}>
+                        {a.title}
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-slate-400">{timeAgo(a.createdAt)}</span>
+                    </span>
+                  </button>
+                );
+              })
             )}
           </div>
           <Link

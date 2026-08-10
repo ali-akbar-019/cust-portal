@@ -112,14 +112,44 @@ export default function TimetableGeneratorPage() {
     return { dayRows, times };
   }, [timetable]);
 
-  const placed = timetable?.filter((s) => s.slots.length > 0).length ?? 0;
+    const placed = timetable?.filter((s) => s.slots.length > 0).length ?? 0;
+
+  function exportCsv() {
+    if (!grid || !selectedDept) return;
+    const rows: string[][] = [];
+    rows.push(['Weekly Timetable — ' + selectedDept.name].map((v) => `"${v}"`));
+    rows.push(['Generated', new Date().toLocaleString()].map((v) => `"${v}"`));
+    rows.push([]);
+    rows.push(['Time', ...DAYS.map((d) => `"${d}"`)]);
+    for (const time of grid.times) {
+      const cells: string[] = [`"${time}"`];
+      for (const day of DAYS) {
+        const entries = grid.dayRows[day]?.get(time) ?? [];
+        const cell = entries
+          .map(({ slot, section }) => `${section.course.code} (${slot.room.label})`)
+          .join(' | ');
+        cells.push(`"${cell.replace(/"/g, '""')}"`);
+      }
+      rows.push(cells);
+    }
+    rows.push([]);
+    rows.push(['Sections placed', String(placed)].map((v) => `"${v}"`));
+    rows.push(['Sections unplaced', String(timetable ? timetable.length - placed : 0)].map((v) => `"${v}"`));
+    const blob = new Blob([rows.map((r) => r.join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${selectedDept.code}-timetable.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <main className="p-6 lg:p-10">
       <PageHeader
         eyebrow="Scheduling Office"
         title="Timetable Generator"
-        subtitle="Automatically place every section of a department across available rooms and times — then inspect the finished weekly timetable below: room, teacher, section and roster."
+        subtitle="Automatically place every section of a department across a full Mon–Sat week of rooms and times — then inspect, download as CSV, or print the finished timetable: room, teacher, section and roster."
       />
 
       <div className="ledger-card mb-8 max-w-xl space-y-3 p-6">
@@ -178,6 +208,21 @@ export default function TimetableGeneratorPage() {
           <>
             <Ribbon tone="navy">{placed} sections placed</Ribbon>
             <Ribbon tone={timetable.length - placed > 0 ? 'gold' : 'muted'}>{timetable.length - placed} unplaced</Ribbon>
+            <span className="mx-1 hidden h-4 w-px bg-slate-200 sm:block" />
+            <button
+              onClick={exportCsv}
+              disabled={!grid || grid.times.length === 0}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-40"
+            >
+              Download CSV
+            </button>
+            <button
+              onClick={() => window.print()}
+              disabled={!grid || grid.times.length === 0}
+              className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-40"
+            >
+              Print
+            </button>
           </>
         )}
       </div>
@@ -217,7 +262,7 @@ export default function TimetableGeneratorPage() {
                         ) : (
                           <div className="space-y-2">
                             {entries.map(({ slot, section }) => {
-                              const key = `${day}-${time}-${section.id}`;
+                              const key = slot.id;
                               const open = expanded === key;
                               const students = section.enrollments.map((e) => e.student);
                               return (

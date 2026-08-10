@@ -298,8 +298,15 @@ async function seedTimetable(
 
     for (const section of deptSections) {
       const feasibleRooms = rooms.filter((r) => r.capacity >= section.capacity && (section.requiresLab ? r.type === 'LAB' : true));
+      // spread sections across the week: try the quietest day first so the
+      // finished timetable isn't a single-day pile-up
+      const dayCounts = new Map<Weekday, number>();
+      for (const p of placed) dayCounts.set(p.day, (dayCounts.get(p.day) ?? 0) + 1);
+      const daysToTry = [...DAYS].sort(
+        (a, b) => (dayCounts.get(a) ?? 0) - (dayCounts.get(b) ?? 0) || DAYS.indexOf(a) - DAYS.indexOf(b),
+      );
       let placedThis = false;
-      for (const day of DAYS) {
+      for (const day of daysToTry) {
         if (placedThis) break;
         for (const slot of grid) {
           const clash = placed.some(

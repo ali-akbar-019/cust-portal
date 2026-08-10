@@ -13,6 +13,7 @@ interface PlacedSlot {
   roomId: string;
   teacherId: string;
   sectionId: string;
+  dayPriority?: number;
 }
 
 interface SectionToPlace {
@@ -62,18 +63,24 @@ export class TimetableGeneratorService {
       unplaced.push(...toPlace.filter((s) => !placedSectionIds.has(s.id)).map((s) => s.id));
     }
 
-    // persist only what was successfully placed
-    for (const slot of placed) {
-      await prisma.timetableSlot.create({
-        data: {
-          day: slot.day,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          roomId: slot.roomId,
-          sectionId: slot.sectionId,
-        },
-      });
-    }
+    // persist only what was successfully placed, replacing this department's
+    // previous placements so re-running Generate overrides (never duplicates)
+    await prisma.$transaction([
+      prisma.timetableSlot.deleteMany({
+        where: { sectionId: { in: toPlace.map((s) => s.id) } },
+      }),
+      ...placed.map((slot) =>
+        prisma.timetableSlot.create({
+          data: {
+            day: slot.day,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            roomId: slot.roomId,
+            sectionId: slot.sectionId,
+          },
+        }),
+      ),
+    ]);
 
     return { placedCount: placed.length, unplacedSectionIds: unplaced };
   }
@@ -118,24 +125,41 @@ export class TimetableGeneratorService {
       (r) => r.capacity >= section.capacity && (section.requiresLab ? r.type === 'LAB' : true),
     );
 
+    // Prefer the quietest days so finished timetables spread across the
+    // whole week (Mon's seats fill first for early sections, then the next
+    // section prefers a lighter day) instead of piling every course on MON.
+    const dayCounts = new Map<Weekday, number>();
+    for (const p of placed) dayCounts.set(p.day, (dayCounts.get(p.day) ?? 0) + 1);
+
+    const candidates: PlacedSlot[] = [];
     for (const day of DAYS) {
       for (const slot of timeSlots) {
         for (const room of feasibleRooms) {
-          const candidate: PlacedSlot = {
+          candidates.push({
             day,
             startTime: slot.start,
             endTime: slot.end,
             roomId: room.id,
             teacherId: section.teacherId,
             sectionId: section.id,
-          };
-          if (this.hasInMemoryClash(candidate, placed)) continue;
-
-          placed.push(candidate);
-          if (this.backtrack(index + 1, sections, rooms, timeSlots, placed)) return true;
-          placed.pop(); // undo and try the next candidate
+            dayPriority: dayCounts.get(day) ?? 0,
+          });
         }
       }
+    }
+    candidates.sort(
+      (a, b) =>
+        (a.dayPriority ?? 0) - (b.dayPriority ?? 0) ||
+        DAYS.indexOf(a.day) - DAYS.indexOf(b.day) ||
+        toMinutes(a.startTime) - toMinutes(b.startTime),
+    );
+
+    for (const candidate of candidates) {
+      if (this.hasInMemoryClash(candidate, placed)) continue;
+
+      placed.push(candidate);
+      if (this.backtrack(index + 1, sections, rooms, timeSlots, placed)) return true;
+      placed.pop(); // undo and try the next candidate
     }
     // no candidate worked for this section — leave it for the caller to
     // report as unplaced rather than failing the whole run

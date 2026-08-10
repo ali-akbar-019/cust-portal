@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
@@ -33,6 +33,20 @@ const DEFAULT_COMPONENTS = [
 ];
 
 type CellMap = Record<string, Record<string, { marks: string; maxMarks: string }>>;
+
+// Returns a human message when a grade cell is invalid, or null when it's
+// fine to save. Empty cells (marks not entered yet) are always allowed.
+function cellIssue(marks: string, maxMarks: string): string | null {
+  if (marks === '' && maxMarks === '') return null;
+  const m = Number(marks);
+  const mx = Number(maxMarks);
+  if (marks !== '' && !Number.isFinite(m)) return 'Enter a valid number';
+  if (maxMarks !== '' && !Number.isFinite(mx)) return 'Max must be a number';
+  if (marks !== '' && m < 0) return 'Marks can\u2019t be negative';
+  if (maxMarks !== '' && mx <= 0) return 'Max marks must be greater than 0';
+  if (marks !== '' && maxMarks !== '' && m > mx) return 'Marks can\u2019t exceed the max';
+  return null;
+}
 
 export default function TeacherGradesPage() {
   const { accessToken, profile } = useAuth();
@@ -112,6 +126,7 @@ export default function TeacherGradesPage() {
       let max = 0;
       components.forEach((c) => {
         const cell = row[c.key];
+        if (cell && cellIssue(cell.marks, cell.maxMarks)) return;
         const m = Number(cell?.marks);
         const mx = Number(cell?.maxMarks);
         if (cell?.marks !== '' && Number.isFinite(m)) marks += m;
@@ -123,10 +138,30 @@ export default function TeacherGradesPage() {
     [cells, components],
   );
 
+  const invalidCells = useMemo(() => {
+    const entries: { studentId: string; component: string; issue: string }[] = [];
+    sheet?.rows.forEach((r) =>
+      components.forEach((c) => {
+        const cell = cells[r.student.id]?.[c.key];
+        if (!cell) return;
+        const issue = cellIssue(cell.marks, cell.maxMarks);
+        if (issue) entries.push({ studentId: r.student.id, component: c.key, issue });
+      }),
+    );
+    return entries;
+  }, [cells, components, sheet]);
+
   async function handleSave() {
     if (!sheet || !currentCourse) return;
     setError(null);
     setStatus(null);
+    if (invalidCells.length > 0) {
+      const first = invalidCells[0]!;
+      setError(`Can\u2019t save yet — ${invalidCells.length} invalid cell${invalidCells.length === 1 ? '' : 's'}: ${
+        first.issue
+      } (${first.studentId.slice(0, 8)} · ${first.component}). Fix them and save again.`);
+      return;
+    }
     setSaving(true);
     try {
       const pending: { studentId: string; component: string; marks: number; maxMarks: number }[] = [];
@@ -208,15 +243,21 @@ export default function TeacherGradesPage() {
         </label>
         <button
           onClick={handleSave}
-          disabled={saving || !sheet}
+          disabled={saving || !sheet || invalidCells.length > 0}
+          title={invalidCells.length > 0 ? 'Fix the invalid cells before saving' : undefined}
           className="mt-5 rounded-md bg-slate-900 px-5 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-40"
         >
-          {saving ? 'Saving...' : 'Save Sheet'}
+          {saving ? 'Saving...' : invalidCells.length > 0 ? `${invalidCells.length} invalid` : 'Save Sheet'}
         </button>
       </div>
 
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
       {status && <p className="mb-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{status}</p>}
+      {invalidCells.length > 0 && (
+        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {invalidCells.length} cell{invalidCells.length === 1 ? '' : 's'} need attention before saving — marks can&apos;t be negative, max marks must be above 0, and marks can&apos;t exceed the max. Invalid cells are ringed in red below.
+        </p>
+      )}
 
       {!sheet ? (
         sectionId && <p className="text-sm text-slate-500" data-testid="loading-sheet">Loading grade sheet...</p>
@@ -256,23 +297,29 @@ export default function TeacherGradesPage() {
                       </td>
                       {components.map((c) => {
                         const cell = cells[r.student.id]?.[c.key] ?? { marks: '', maxMarks: '' };
+                        const issue = cellIssue(cell.marks, cell.maxMarks);
+                        const ring = issue ? 'border-red-400 bg-red-50 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-200 focus-within:border-slate-900 focus-within:ring-slate-900';
                         return (
                           <td key={c.key} className="px-2 py-2 text-center">
-                            <div className="inline-flex items-center overflow-hidden rounded-md border border-slate-200 focus-within:border-slate-900 focus-within:ring-1 focus-within:ring-slate-900">
+                            <div
+                              className={`inline-flex items-center overflow-hidden rounded-md border focus-within:ring-1 ${ring}`}
+                              title={issue ?? undefined}
+                            >
                               <input
                                 value={cell.marks}
                                 onChange={(e) => setCell(r.student.id, c.key, 'marks', e.target.value)}
                                 placeholder="–"
                                 type="number"
                                 aria-label={`${r.student.enrollmentNo} ${c.label} marks`}
-                                className="w-14 border-r border-slate-200 bg-transparent px-2 py-1.5 text-center font-data text-xs outline-none"
+                                className={`w-14 border-r border-slate-200 bg-transparent px-2 py-1.5 text-center font-data text-xs outline-none ${issue ? 'text-red-700' : ''}`}
                               />
                               <input
                                 value={cell.maxMarks}
                                 onChange={(e) => setCell(r.student.id, c.key, 'maxMarks', e.target.value)}
                                 aria-label={`${r.student.enrollmentNo} ${c.label} max marks`}
                                 type="number"
-                                className="w-12 bg-slate-50 px-1 py-1.5 text-center font-data text-[11px] outline-none"
+                                min={1}
+                                className={`w-12 px-1 py-1.5 text-center font-data text-[11px] outline-none ${issue ? 'bg-red-100/60' : 'bg-slate-50'}`}
                               />
                             </div>
                           </td>

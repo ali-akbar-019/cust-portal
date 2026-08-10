@@ -207,4 +207,27 @@ Applied Ali's round of direct feedback across both apps.
 
 ---
 
-**Still open / next candidates:** CI (TypeScript + lint on push via GitHub Actions); real payment gateway for invoices ("pay" is still a fake success); book-reservation fulfillment (PENDING → FULFILLED on pickup) in the librarian UI; enrollment-schedule admin form; transcript/letter requests producing actual PDFs; email notifications (BullMQ); realistic production deployment.
+## 17. Feedback round — read receipts, grade validation, timetable fixes
+
+Applied the next round of direct feedback across both apps.
+
+**Portal read state for announcements**
+- New `lib/notification-reads.ts` keeps a per-user read set in `localStorage`, keyed by the logged-in profile's `userId` so shared devices never cross-contaminate reads.
+- `NotificationBell` now counts **unread** in the badge, highlights unread items, marks one read on click, and has a "Mark all read" action in the dropdown.
+- New shared `AnnouncementsFeed` component (unread ribbon, unread highlighting, "Mark all as read") backs the student/teacher/librarian notice pages; the admin notice page keeps its own fuller listing.
+
+**Teacher grade sheet validation**
+- Cells are validated against marks ≥ 0, max marks > 0, and marks ≤ max. Invalid cells get a red ring + tooltip, are excluded from the running total %, the save button is gated ("N invalid"), and a red banner explains what to fix; a save only writes cells that pass.
+
+**Admin timetable fixes**
+- **Duplicate tombstones ("three cards", "show students opens for all")**: Generate was *appending* slots on every run and the expand toggle used a non-unique key. The generator now replaces the department's slots atomically (delete-then-create in one transaction) and the page's expand key is per-`slot.id`.
+- **Full-week spread**: the generator and seed both used first-fit day (everything lands on MON). Both now prefer the least-loaded day first, so the finished weekly grid fills Mon–Fri (then Sat) instead of one column.
+- **Download**: "Download CSV" (one row per time, one column per day) and "Print" buttons in the timetable header.
+
+**Typecheck/build**: `@cust/api` and `@cust/web` both `typecheck` clean; `next build` compiles all 38 static app pages — the standalone `EPERM: symlink` failure happens only in the trace-copy step and is the pre-existing Windows-only issue (with `output: 'standalone'` required by the Dockerfile).
+
+**Schema note**: announcement read state is deliberately client-side for now. `prisma generate` fails with `EPERM: rename query_engine-windows.dll.node` while the API dev server (port 4000) holds that DLL — any future server-side `AnnouncementReceipt` join table needs the dev server stopped (and the migration run) first.
+
+---
+
+**Still open / next candidates:** CI (TypeScript + lint on push via GitHub Actions); real payment gateway for invoices ("pay" is still a fake success); book-reservation fulfillment (PENDING → FULFILLED on pickup) in the librarian UI; enrollment-schedule admin form; transcript/letter requests producing actual PDFs; email notifications (BullMQ); server-side announcement read receipts (requires a stopped dev server for the migration); realistic production deployment.
