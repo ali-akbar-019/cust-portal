@@ -33,7 +33,7 @@ export function RoleLayout({
   const pageLabel = activeItem?.label ?? title;
 
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-slate-900 text-slate-300">
+    <div className="flex h-[100vh] sticky top-0 flex-col bg-slate-900 text-slate-300">
       <div className="flex items-center gap-3 border-b border-white/10 px-5 py-5">
         <Image src="/cust-logo.png" alt="CUST" width={38} height={38} className="shrink-0" />
         <div>
@@ -50,11 +50,10 @@ export function RoleLayout({
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`block rounded-md border-l-2 px-3 py-2 text-sm transition ${
-                active
-                  ? 'border-red-500 bg-white/5 font-medium text-white'
-                  : 'border-transparent text-slate-400 hover:border-slate-600 hover:bg-white/5 hover:text-white'
-              }`}
+              className={`block rounded-md border-l-2 px-3 py-2 text-sm transition ${active
+                ? 'border-red-500 bg-white/5 font-medium text-white'
+                : 'border-transparent text-slate-400 hover:border-slate-600 hover:bg-white/5 hover:text-white'
+                }`}
             >
               {item.label}
             </Link>

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+th,
+td {
+  min-width: 0;
+}
+
 /* ─────────────────────────────────────────────────────────────
    CUST PORTAL — "Collegiate Ledger" design system
    Grounded in the university's own crest: deep navy + crimson
@@ -121,6 +126,10 @@
   input[type='time'],
   input[type='datetime-local'] {
     cursor: pointer;
+  }
+  img {
+    max-width: 100%;
+    height: auto;
   }
   input[type='text'],
   input[type='number'],

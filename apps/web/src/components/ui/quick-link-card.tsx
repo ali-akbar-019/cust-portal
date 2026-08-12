@@ -4,7 +4,7 @@ export function QuickLinkCard({ href, label, desc }: { href: string; label: stri
   return (
     <Link
       href={href}
-      className="group ledger-card block p-5 transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group ledger-card block p-5 rounded-lg border border-slate-200 transition hover:shadow-md hover:border-red-500"
     >
       <p className="mb-1 font-serif text-base font-semibold text-slate-900 group-hover:text-red-600">{label}</p>
       <p className="text-sm text-slate-500">{desc}</p>

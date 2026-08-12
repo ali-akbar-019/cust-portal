@@ -8,5 +8,11 @@ const TONES = {
 } as const;
 
 export function Ribbon({ children, tone = 'muted' }: { children: React.ReactNode; tone?: keyof typeof TONES }) {
-  return <span className={`ribbon-badge ${TONES[tone]}`}>{children}</span>;
+  return (
+    <span
+      className={`inline-flex items-center gap-2 ${TONES[tone]} rounded-md px-2.5 py-0.5 text-xs font-medium`}
+    >
+      {children}
+    </span>
+  );
 }

@@ -110,11 +110,11 @@ export default function AdminDashboardPage() {
       {(clearances.length > 0 || openComplaints > 0 || pendingRequests > 0) && (
         <div className="mb-8 ledger-card border-l-4 border-l-red-600 p-4">
           <p className="mb-1 font-serif text-base font-semibold text-slate-900">Needs your attention</p>
-          <ul className="space-y-1 text-sm text-slate-600">
-            {openComplaints > 0 && <li>{openComplaints} open complaint(s)</li>}
-            {pendingRequests > 0 && <li>{pendingRequests} pending request(s)</li>}
-            {clearances.length > 0 && <li>{clearances.length} pending library clearance(s)</li>}
-          </ul>
+          <p className="text-sm text-slate-600">
+            {openComplaints > 0 && <span className="font-medium">{openComplaints} open complaint(s)</span>}
+            {pendingRequests > 0 && <span className="ml-2 font-medium">{pendingRequests} pending request(s)</span>}
+            {clearances.length > 0 && <span className="ml-2 font-medium">{clearances.length} pending library clearance(s)</span>}
+          </p>
         </div>
       )}
 

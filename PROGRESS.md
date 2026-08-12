@@ -278,3 +278,29 @@ Applied the next round of direct feedback across both apps.
 **Typecheck:** `@cust/web` `typecheck` clean.
 
 **Schema note:** no schema changes in this round.
+
+---
+
+## 19. UI polish — consistent design, emptiness, overflow, and responsiveness
+
+**Globals CSS**
+- Added `th, td { min-width: 0; }` to prevent table horizontal overflow on mobile — critical for attendance rosters, grade sheets, and timetable grids.
+- Added `img { max-width: 100%; height: auto; }` so images in cards/announcements never overflow their containers.
+- The existing `select` restyle (native caret hidden, custom navy chevron, focus ring) now applies sitewide to every dropdown (section/course pickers, date pickers).
+
+**Empty states**
+- Enhanced `EmptyState` component (`page-header.tsx`) with optional `description` prop and better spacing (mb-2, mb-4). Used across Student Results, Student Attendance, and other pages when data is absent.
+
+**Shared components**
+- **Ribbon**: widened padding (`px-2.5 py-0.5`), added rounded corners (`rounded-md`), and inline-flex layout with gap for tighter integration with text.
+- **StatCard**: kept ledger-card background with subtle `hover:border-slate-300` for better touch feedback; transition remains for smooth state change.
+- **QuickLinkCard**: replaced `-translate-y-0.5` hover with `hover:border-red-500` for crimson accent consistency; added `rounded-lg` and explicit `border border-slate-200`.
+
+**Representative dashboards improved**
+- **Student dashboard**: "My Courses" section now uses a responsive `grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3` instead of `flex flex-wrap`, giving tighter control and better mobile wrapping. Today's Schedule and Recent Announcements split into two separate rows for improved mobile vertical breathing room.
+- **Teacher dashboard**: ChartCard hover now has `hover:border-red-500` accent; QuickLinkCards use `hover:shadow-md hover:border-red-500` for consistency; removed unused `-translate-y-0.5` transform.
+- **Admin dashboard**: "Needs your attention" summary now uses compact `<p>` with `<span>` badges instead of an `<ul>`, saving vertical space. Conditional rendering remains identical (open complaints / pending requests / pending clearances).
+
+**Typecheck:** `@cust/web` `typecheck` clean across all modified files.
+
+**Schema note:** no schema changes in this round.

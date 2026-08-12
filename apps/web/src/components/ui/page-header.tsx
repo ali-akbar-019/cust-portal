@@ -23,10 +23,13 @@ export function PageHeader({
   );
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({ title, hint, description }: { title: string; hint?: string; description?: string }) {
   return (
     <div className="ledger-card border-dashed p-8 text-center">
-      <p className="font-serif text-base font-semibold text-slate-700">{title}</p>
+      <p className="mb-2 font-serif text-base font-semibold text-slate-700">{title}</p>
+      {description && (
+        <p className="mb-4 text-sm text-slate-500">{description}</p>
+      )}
       {hint && <p className="mt-1 text-sm text-slate-500">{hint}</p>}
     </div>
   );

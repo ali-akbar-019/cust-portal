@@ -138,8 +138,8 @@ export default function StudentDashboardPage() {
             </div>
           )}
 
-          <h2 className="mb-3 mt-6 font-serif text-lg font-semibold text-slate-900">My Courses</h2>
-          <div className="flex flex-wrap gap-2">
+          <h2 className="mb-3 font-serif text-lg font-semibold text-slate-900">My Courses</h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {mySections.map((s) => (
               <span key={s.id} className="rounded-md border border-slate-200 bg-white px-2.5 py-1 font-data text-xs text-slate-600">
                 {s.course.code}
