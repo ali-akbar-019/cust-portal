@@ -259,3 +259,22 @@ Applied the next round of direct feedback across both apps.
 ---
 
 **Still open / next candidates:** CI (TypeScript + lint on push via GitHub Actions); real payment gateway for invoices ("pay" is still a fake success); book-reservation fulfillment (PENDING → FULFILLED on pickup) in the librarian UI; enrollment-schedule admin form; transcript/letter requests producing actual PDFs; email notifications (BullMQ); server-side announcement read receipts (requires a stopped dev server for the migration); realistic production deployment.
+
+---
+
+## 19. Security documentation, logout confirmation, thinner scrollbars
+
+**Security doc**
+- New [`SECURITY.md`](./SECURITY.md) — a full written-up security model of what's implemented and where: bcrypt hashing + split JWT secrets (`auth.service.ts`), role/own-data enforcement (RolesGuard, `ensureOwnStudentOrElevated`, `resolveStudentId`), whitelisting ValidationPipe, `users` service never leaking `passwordHash`, file-upload limits + randomized names, gitignored `.env`/`uploads`.
+- Also captured the **honest production gaps** the code already flags (`TODO (production)`/`TODO (v2)`): non-`httpOnly` cookies (biggest), no refresh-token rotation/revocation, no `helmet`/security headers, no rate limiting, wide-open CORS, disk-hosted uploads with no mime/AV checks, no password reset. Added a suggested hardening order.
+- `README.md` updated to reference `SECURITY.md` from the Auth & Roles section and the monorepo tree (and the tech-stack table now lists bcrypt).
+
+**Logout confirmation dialog**
+- The sidebar "Log out" button no longer logs out instantly — it opens a centered confirmation dialog (CUST design language: navy/crimson, logout icon) with Cancel / Log out, closes on backdrop click, and only clears cookies + redirects when confirmed (`apps/web/src/components/shared/role-layout.tsx`).
+
+**Thinner scrollbars**
+- Global and `.scroll-area` scrollbars slimmed from 8–9px to a consistent **5px** pill thumb (webkit + `scrollbar-width: thin` for Firefox), with a slightly stronger thumb color for visibility within the 5px (`globals.css`).
+
+**Typecheck:** `@cust/web` `typecheck` clean.
+
+**Schema note:** no schema changes in this round.

@@ -27,6 +27,7 @@ export function RoleLayout({
   const pathname = usePathname();
   const { logout, profile } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const activeItem = items.find((item) => pathname === item.href);
   const pageLabel = activeItem?.label ?? title;
@@ -64,7 +65,7 @@ export function RoleLayout({
       <div className="border-t border-white/10 px-4 py-4">
         <p className="truncate text-xs text-slate-400">{profile?.email}</p>
         <button
-          onClick={logout}
+          onClick={() => setConfirmLogout(true)}
           className="mt-2 w-full rounded-md px-3 py-1.5 text-left text-sm text-slate-400 transition hover:bg-white/5 hover:text-white"
         >
           Log out
@@ -116,6 +117,52 @@ export function RoleLayout({
 
         <div className="flex-1">{children}</div>
       </div>
+
+      {confirmLogout && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+          onClick={() => setConfirmLogout(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-dialog-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-lg"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-600">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div>
+                <h3 id="logout-dialog-title" className="font-serif text-lg font-semibold text-slate-900">
+                  Log out of your account?
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  You'll need your password to sign back in. Any unsaved work will be lost.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmLogout(false)}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={logout}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -27,7 +27,7 @@ CUST's current student portal (Tasjeel) is slow, dated, and missing basic qualit
 | Frontend | Next.js 15 (App Router), TypeScript, Tailwind CSS |
 | Backend | NestJS 10 (TypeScript), REST API |
 | Database | MySQL (XAMPP-friendly for local dev) via Prisma ORM |
-| Auth | JWT (access + refresh tokens), role-based guards |
+| Auth | JWT (access + refresh tokens), bcrypt, role-based guards |
 | Monorepo | Turborepo + pnpm workspaces |
 | File uploads | Local disk (dev) — swappable for S3/R2 |
 
@@ -45,15 +45,18 @@ cust-portal/
 │   └── config/            # Shared tsconfig
 ├── docs/
 │   └── timetable-design.md   # Timetable generator algorithm design notes
+├── SECURITY.md            # Security model — what's in place, production gaps
 └── PROGRESS.md            # Running build log — what's done, what's next
 ```
 
 ## Features
 
 ### Auth & Roles
-- **JWT-based login** (short-lived access + refresh tokens) with role-based guards on both frontend and backend.
+- **JWT-based login** (short-lived access + refresh tokens, bcrypt-hashed passwords) with role-based guards on both frontend and backend.
 - Four fully-featured portals — **Student, Teacher, Admin, Librarian** — each with its own responsive sidebar, landing dashboard, and restricted routes (a student can never reach an admin page).
 - Student can log in and see their real id-driven data (attendance, results, invoices, requests…) without any manual configuration.
+- Logout is gated behind a confirmation dialog so sessions are never ended by accident.
+- Every API controller is JWT-guarded, writes are role-scoped, and students can't read or write other students' data via ID guessing. See [`SECURITY.md`](./SECURITY.md) for the full security model and its known production gaps.
 
 ### Timetable
 - **Auto-generator**: a constraint-solver (greedy + backtracking) that assigns every section of a department a day, time-window, and room while respecting room capacity, room type (lab vs. lecture hall), teacher conflicts, and each department's class-hours window.
