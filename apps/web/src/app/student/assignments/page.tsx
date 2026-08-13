@@ -27,6 +27,7 @@ export default function StudentAssignmentsPage() {
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'past' | 'due-soon' | 'open'>('all');
 
   useEffect(() => {
     if (!accessToken || !profile?.studentId) return;
@@ -38,49 +39,19 @@ export default function StudentAssignmentsPage() {
       .catch(() => {});
   }, [accessToken, profile]);
 
-  async function load() {
-    if (!sectionId || !accessToken) return;
-    setError(null);
-    try {
-      const data = await apiFetch<AssignmentView[]>(`/assignments/section/${sectionId}`, { token: accessToken });
-      setAssignments(data);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load assignments');
-    }
-  }
-
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!accessToken || !profile?.studentId) return;
+    (async () => {
+      try {
+        const data = await apiFetch<AssignmentView[]>(`/assignments/section/${sectionId}`, { token: accessToken });
+        setAssignments(data);
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : 'Failed to load assignments');
+      }
+    })();
   }, [sectionId, accessToken]);
 
-  async function handleSubmit(assignmentId: string, file: File) {
-    setStatus(null);
-    setError(null);
-    setUploadingFor(assignmentId);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const uploadRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/assignments/upload`,
-        { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData },
-      );
-      if (!uploadRes.ok) throw new Error('Upload failed');
-      const { fileUrl } = await uploadRes.json();
-
-      await apiFetch(`/assignments/${assignmentId}/submit`, {
-        method: 'POST',
-        token: accessToken,
-        body: JSON.stringify({ fileUrl }),
-      });
-      setStatus('Submitted successfully — your work is with the teacher.');
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Submission failed — check the deadline hasn't passed");
-    } finally {
-      setUploadingFor(null);
-    }
-  }
-
+  // no deps — tab state only changes on button clicks; assignments array comes from API
   const now = Date.now();
   const pastDue = assignments.filter((a) => new Date(a.deadline).getTime() < now);
   const dueSoon = assignments.filter((a) => {
@@ -88,6 +59,22 @@ export default function StudentAssignmentsPage() {
     return t >= 0 && t <= 7 * 864e5;
   });
   const open = assignments.filter((a) => new Date(a.deadline).getTime() >= now);
+
+  function setTab(tab: 'all' | 'past' | 'due-soon' | 'open') {
+    setActiveTab(tab);
+  }
+
+  // Determine which assignments to render based on active tab
+  const renderedAssignments = assignments.filter((a) => {
+    const msLeft = new Date(a.deadline).getTime() - now;
+    const isPastDue = msLeft < 0;
+    const daysLeft = Math.ceil(msLeft / 864e5);
+    if (activeTab === 'all') return true;
+    if (activeTab === 'past') return isPastDue;
+    if (activeTab === 'due-soon') return !isPastDue && daysLeft <= 3;
+    if (activeTab === 'open') return !isPastDue && daysLeft > 3;
+    return true;
+  });
 
   return (
     <main className="p-6 lg:p-10">
@@ -126,8 +113,38 @@ export default function StudentAssignmentsPage() {
         <EmptyState title="No assignments posted for this course yet" hint="Your teacher hasn't published anything — check back after your next class." />
       )}
 
+      {/* Tabs: Past Due / Due Soon / Open */}
+      <div className="mb-6 rounded-md border border-slate-300 overflow-hidden">
+        <div className="flex border-b border-slate-200">
+          <button
+            tabIndex={0}
+            role="button"
+            className="flex-1 py-2 text-sm font-medium text-slate-700 border-b-2 border-b-red-600 bg-white transition-colors hover:bg-slate-50"
+            onClick={() => setTab('past')}
+          >
+            Past Due {pastDue.length > 0 ? <span className="ml-1 text-xs text-red-600">({pastDue.length})</span> : ''}
+          </button>
+          <button
+            tabIndex={1}
+            role="button"
+            className="flex-1 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => setTab('due-soon')}
+          >
+            Due Soon {dueSoon.length > 0 ? <span className="ml-1 text-xs text-slate-500">({dueSoon.length})</span> : ''}
+          </button>
+          <button
+            tabIndex={2}
+            role="button"
+            className="flex-1 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            onClick={() => setTab('open')}
+          >
+            Open {open.length > 0 ? <span className="ml-1 text-xs text-slate-500">({open.length})</span> : ''}
+          </button>
+        </div>
+      </div>
+
       <div className="max-w-2xl space-y-3">
-        {assignments.map((a) => {
+        {renderedAssignments.map((a) => {
           const msLeft = new Date(a.deadline).getTime() - now;
           const isPastDue = msLeft < 0;
           const daysLeft = Math.ceil(msLeft / 864e5);
@@ -157,7 +174,27 @@ export default function StudentAssignmentsPage() {
                   disabled={isPastDue || uploadingFor === a.id}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) handleSubmit(a.id, file);
+                    if (file) {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/assignments/upload`,
+                        { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData }
+                      ).then((res) => {
+                        if (!res.ok) throw new Error('Upload failed');
+                        return res.json();
+                      }).then(({ fileUrl }) => {
+                        apiFetch(`/assignments/${a.id}/submit`, {
+                          method: 'POST',
+                          token: accessToken,
+                          body: JSON.stringify({ fileUrl }),
+                        }).then(() => {
+                          setStatus('Submitted successfully — your work is with the teacher.');
+                          setUploadingFor(null);
+                        }).catch(() => setError("Submission failed — check the deadline hasn't passed"));
+                      }).catch(() => setError("Submission failed — check the deadline hasn't passed"));
+                      setUploadingFor(a.id);
+                    }
                   }}
                   className="hidden"
                 />

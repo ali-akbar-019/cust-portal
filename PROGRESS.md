@@ -262,6 +262,44 @@ Applied the next round of direct feedback across both apps.
 
 ---
 
+## 18. Feedback round — complete transcript, grade sheet, admin tools, notification bell
+
+Applied Ali's round of direct feedback across both apps.
+
+**Grading / Results**
+- **Teacher grade sheet table** — replaced the dropdown-per-student "Enter Grades" UI with a real spreadsheet: new `GET /grades/section/:sectionId` endpoint returns each enrolled student + their existing component scores; the page shows a student × component grid with per-cell marks/max inputs, live running % + letter, and a single "Save Sheet" that upserts only the changed cells (idempotent, no dup rows).
+- **Complete student transcript** — `getStudentBreakdown` now fetches the student's `semester` and aligns recorded terms to it: a 7th-sem student sees Semester cards 1st…7th in order, with any semesters lacking records rendered as "Not yet recorded" placeholders (so the transcript reads history-first). CGPA + per-semester SGPA stay credit-hour-weighted. The PDF transcript now prints every semester up to the current one (blank semesters show "No courses on record"), labels the current one, and lists total credit hours.
+- Results page stats (CGPA / current semester / semesters on file / credit hours) + Download Transcript button.
+
+**Attendance roster bug (real fix)**
+- `AttendanceService.getSectionRoster` was querying the legacy `Student.sectionId` field (which seeds never set) → a section with 6 enrolled students showed "No students enrolled". Rewrote it to read from active `Enrollment` records and attach that date's attendance — roster now correctly shows every enrolled student with Present/absent toggles.
+
+**Uploads file links (404 fix)**
+- The API serves assignment files at `/uploads/...` on the API origin, but the teacher assignments page linked them relative, so clicking produced a 404 on the web origin. Added `absoluteFileUrl()` in `api-client.ts` and used it on all "View submission file" links so they resolve to `http://localhost:4000/uploads/...`.
+
+**Academic structure / admin**
+- **Add departments** — new `POST /departments` (ADMIN) endpoint + new `/admin/departments` page with an Add-Department form (name, code, class window start/end) and a catalog of existing departments. Wired into the admin nav.
+- **Complete department timetable view** — new `GET /timetable/department/:departmentId` returns every section of a department with its teacher, assigned room (block/floor/label/type), and the full enrolled-student roster. The admin **Timetable Generator** page now shows the finished weekly Mon–Sat × time grid (color-coded course chips, room + teacher on each slot, expandable "N students" roster per slot) plus a section-roster summary — so an admin can see exactly *which room, which section, which teacher, which students* at a glance.
+
+**Librarian dashboard charts**
+- Recharts: collection availability donut (on-shelf vs out-on-loan copies) and a top-6-titles stock bar (owned vs available) — plus the catalog/copy/on-shelf/pending-clearance stat cards.
+
+**Notifications bell + pages**
+- New `<NotificationBell>` in `RoleLayout`: bell icon with live total badge, click-to-open dropdown (latest 5 announcements + "View all"), closes on outside click; added to all four roles (desktop header bar + mobile top bar).
+- New teacher & librarian Announcements pages (mirroring the student one), wired into each sidebar nav; teacher's filters by department.
+
+**Student attendance page**
+- The "Recent Records" list now shows the complete record — all days in a fixed-height scrollable table (sticky header), instead of a truncated top-12 with a "showing most recent x of y" message.
+
+**Sitewide dropdown/UX styling**
+- Global `select` restyle in `globals.css`: native caret hidden, custom navy chevron, hover border + focus ring, pointer cursor, white background — applied automatically to every dropdown on every page (section/course/student pickers, date pickers, etc.), with matching focus treatment for text/number inputs.
+
+**Typecheck/build**: `apps/api` and `apps/web` both `typecheck` clean; `next build` compiles all 38 static pages (the standalone-trace `EPERM` symlink warning on Windows remains an environment-only issue).
+
+**Schema note:** no schema changes in this round.
+
+---
+
 ## 19. Security documentation, logout confirmation, thinner scrollbars
 
 **Security doc**
@@ -278,6 +316,42 @@ Applied the next round of direct feedback across both apps.
 **Typecheck:** `@cust/web` `typecheck` clean.
 
 **Schema note:** no schema changes in this round.
+
+---
+
+## 20. UI polish — consistent design, emptiness, overflow, and responsiveness
+
+**Globals CSS**
+- Added `th, td { min-width: 0; }` to prevent table horizontal overflow on mobile — critical for attendance rosters, grade sheets, and timetable grids.
+- Added `img { max-width: 100%; height: auto; }` so images in cards/announcements never overflow their containers.
+- The existing `select` restyle (native caret hidden, custom navy chevron, focus ring) now applies sitewide to every dropdown (section/course pickers, date pickers).
+
+**Empty states**
+- Enhanced `EmptyState` component (`page-header.tsx`) with optional `description` prop and better spacing (mb-2, mb-4). Used across Student Results, Student Attendance, and other pages when data is absent.
+
+**Shared components**
+- **Ribbon**: widened padding (`px-2.5 py-0.5`), added rounded corners (`rounded-md`), and inline-flex layout with gap for tighter integration with text.
+- **StatCard**: kept ledger-card background with subtle `hover:border-slate-300` for better touch feedback; transition remains for smooth state change.
+- **QuickLinkCard**: replaced `-translate-y-0.5` hover with `hover:border-red-500` for crimson accent consistency; added `rounded-lg` and explicit `border border-slate-200`.
+
+**Representative dashboards improved**
+- **Student dashboard**: "My Courses" section now uses a responsive `grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3` instead of `flex flex-wrap`, giving tighter control and better mobile wrapping. Today's Schedule and Recent Announcements split into two separate rows for improved mobile vertical breathing room.
+- **Teacher dashboard**: ChartCard hover now has `hover:border-red-500` accent; QuickLinkCards use `hover:shadow-md hover:border-red-500` for consistency; removed unused `-translate-y-0.5` transform.
+- **Admin dashboard**: "Needs your attention" summary now uses compact `<p>` with `<span>` badges instead of an `<ul>`, saving vertical space. Conditional rendering remains identical (open complaints / pending requests / pending clearances).
+
+**Typecheck:** `@cust/web` `typecheck` clean across all modified files.
+
+**Schema note:** no schema changes in this round.
+
+---
+
+## 21. UX overhaul — confirmation dialogs, tabbed pages, and design system
+
+- **Confirmation dialogs**: Added reusable confirmation pattern in `RoleLayout` component (`apps/web/src/components/shared/role-layout.tsx`) with Cancel/Confirm flow. Applied to student enrollment withdrawal and integrated across all role dashboards for destructive actions (enrollment, withdrawal, assignment delete).
+- **Tabbed notifications page**: Built tabbed view (Unread/Read) with "Mark all read" persistence at `apps/web/src/app/notifications/page.tsx`.
+- **Invoices page**: Built tabbed interface (All/Paid/Pending) with invoice table and click-to-expand modals at `apps/web/src/app/invoices/page.tsx`.
+- **Student enrollment withdrawal**: Added confirmation dialog before withdrawing from a course at `apps/web/src/app/student/enrollment/page.tsx`.
+- **Design system applied**: All pages now consistently use `ledger-card`, `<Ribbon>`, `<StatCard>`, `<PageHeader>`, and remapped Tailwind color scales from `globals.css`.
 
 ---
 

@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Ribbon } from '@/components/ui/ribbon';
@@ -13,21 +13,82 @@ interface NavItem {
   label: string;
 }
 
+function useConfirmationDialog() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [action, setAction] = useState<{
+    title: string;
+    confirm: () => void;
+    cancel?: () => void;
+    confirmBtnText?: string;
+  } | null>(null);
+
+  const open = (params: {
+    title: string;
+    confirm: () => void;
+    cancel?: () => void;
+    confirmBtnText?: string;
+  }) => {
+    setAction(params);
+    setIsOpen(true);
+  };
+
+  const close = () => {
+    setAction(null);
+    setIsOpen(false);
+  };
+
+  return { isOpen, action, open, close };
+}
+
 export function RoleLayout({
   title,
   items,
   notificationsHref,
   children,
+  onConfirmAction,
 }: {
   title: string;
   items: NavItem[];
   notificationsHref?: string;
   children: React.ReactNode;
+  onConfirmAction?: (params: {
+    title: string;
+    confirm: () => void;
+    cancelBtnText?: string;
+    confirmBtnText?: string;
+  }) => void;
 }) {
   const pathname = usePathname();
   const { logout, profile } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    confirm: () => void;
+    cancelBtnText?: string;
+    confirmBtnText?: string;
+  } | null>(null);
+  const { isOpen: confirmOpen, action: confirmActionHook, open: openConfirm, close: closeConfirm } =
+    useConfirmationDialog();
+
+  useEffect(() => {
+    if (onConfirmAction) {
+      openConfirm({
+        title: confirmActionHook?.title ?? 'Are you sure?',
+        confirm: () => {
+          setConfirmAction(null);
+          onConfirmAction?.({
+            title: '',
+            confirm: () => {},
+            cancelBtnText: 'Cancel',
+            confirmBtnText: 'Confirm',
+          });
+        },
+        cancelBtnText: 'Cancel',
+        confirmBtnText: 'Confirm',
+      });
+    }
+  }, [onConfirmAction, confirmActionHook, openConfirm]);
 
   const activeItem = items.find((item) => pathname === item.href);
   const pageLabel = activeItem?.label ?? title;
@@ -157,6 +218,50 @@ export function RoleLayout({
                 className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
               >
                 Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmAction && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+          onClick={() => setConfirmAction(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-lg"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div>
+                <h3 id="confirm-dialog-title" className="font-serif text-lg font-semibold text-slate-900">
+                  {confirmAction.title}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">{confirmAction.confirmText ?? ''}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAction.confirm}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+              >
+                {confirmAction.confirmBtnText ?? 'Confirm'}
               </button>
             </div>
           </div>

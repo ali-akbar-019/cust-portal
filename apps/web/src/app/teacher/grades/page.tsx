@@ -301,7 +301,7 @@ export default function TeacherGradesPage() {
                         const ring = issue ? 'border-red-400 bg-red-50 focus-within:border-red-600 focus-within:ring-red-600' : 'border-slate-200 focus-within:border-slate-900 focus-within:ring-slate-900';
                         return (
                           <td key={c.key} className="px-2 py-2 text-center">
-                            <div
+<div
                               className={`inline-flex items-center overflow-hidden rounded-md border focus-within:ring-1 ${ring}`}
                               title={issue ?? undefined}
                             >
@@ -311,7 +311,7 @@ export default function TeacherGradesPage() {
                                 placeholder="–"
                                 type="number"
                                 aria-label={`${r.student.enrollmentNo} ${c.label} marks`}
-                                className={`w-14 border-r border-slate-200 bg-transparent px-2 py-1.5 text-center font-data text-xs outline-none ${issue ? 'text-red-700' : ''}`}
+                                className={`flex-1 rounded-md border-r border-slate-200 bg-transparent px-2 py-1.5 text-center font-data text-xs outline-none ${issue ? 'text-red-700' : ''} min-w-0`}
                               />
                               <input
                                 value={cell.maxMarks}
@@ -319,8 +319,8 @@ export default function TeacherGradesPage() {
                                 aria-label={`${r.student.enrollmentNo} ${c.label} max marks`}
                                 type="number"
                                 min={1}
-                                className={`w-12 px-1 py-1.5 text-center font-data text-[11px] outline-none ${issue ? 'bg-red-100/60' : 'bg-slate-50'}`}
-                              />
+                                className={`flex-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-center font-data text-[11px] outline-none ${issue ? 'bg-red-100/60' : 'bg-slate-50'} min-w-0`}
+                            />
                             </div>
                           </td>
                         );

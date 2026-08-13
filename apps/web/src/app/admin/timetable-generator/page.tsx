@@ -238,7 +238,7 @@ export default function TimetableGeneratorPage() {
         </div>
       ) : grid ? (
         <div className="scroll-area overflow-x-auto rounded-lg border border-slate-200">
-          <table className="w-full min-w-[900px] border-collapse text-sm">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="w-24 px-3 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Time</th>

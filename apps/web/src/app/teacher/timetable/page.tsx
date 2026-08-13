@@ -63,7 +63,7 @@ export default function TeacherTimetablePage() {
         <p className="text-sm text-slate-500">No timetable slots yet.</p>
       ) : (
         <div className="scroll-area ledger-card overflow-x-auto p-2">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
+          <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
                 <th className="w-20 border-b border-slate-200 p-2 text-left text-xs font-medium uppercase tracking-wide text-slate-400"></th>
