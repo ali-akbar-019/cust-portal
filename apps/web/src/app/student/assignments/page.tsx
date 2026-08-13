@@ -1,16 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
-import { StatCard } from '@/components/ui/stat-card';
-import { Ribbon } from '@/components/ui/ribbon';
 
 interface MySection {
   id: string;
   course: { title: string; code: string };
 }
+
 interface AssignmentView {
   id: string;
   title: string;
@@ -18,6 +17,11 @@ interface AssignmentView {
   deadline: string;
   fileUrl: string | null;
 }
+
+type AssignmentTab = 'all' | 'past' | 'due-soon' | 'open';
+
+const card = 'rounded-2xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-sm';
+const input = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/5';
 
 export default function StudentAssignmentsPage() {
   const { accessToken, profile } = useAuth();
@@ -27,182 +31,233 @@ export default function StudentAssignmentsPage() {
   const [uploadingFor, setUploadingFor] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'past' | 'due-soon' | 'open'>('all');
+  const [activeTab, setActiveTab] = useState<AssignmentTab>('all');
+  const [loadingSections, setLoadingSections] = useState(true);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
 
   useEffect(() => {
     if (!accessToken || !profile?.studentId) return;
+
+    setLoadingSections(true);
     apiFetch<MySection[]>(`/students/${profile.studentId}/sections`, { token: accessToken })
       .then((sections) => {
-        setMySections(sections);
-        if (sections.length > 0) setSectionId(sections[0]?.id ?? '');
+        setMySections(Array.isArray(sections) ? sections : []);
+        setSectionId(sections[0]?.id ?? '');
       })
-      .catch(() => {});
-  }, [accessToken, profile]);
+      .catch(() => {
+        setMySections([]);
+        setSectionId('');
+      })
+      .finally(() => setLoadingSections(false));
+  }, [accessToken, profile?.studentId]);
 
   useEffect(() => {
-    if (!accessToken || !profile?.studentId) return;
-    (async () => {
-      try {
-        const data = await apiFetch<AssignmentView[]>(`/assignments/section/${sectionId}`, { token: accessToken });
-        setAssignments(data);
-      } catch (err) {
+    if (!accessToken || !sectionId) {
+      setAssignments([]);
+      return;
+    }
+
+    setLoadingAssignments(true);
+    setError(null);
+    apiFetch<AssignmentView[]>(`/assignments/section/${sectionId}`, { token: accessToken })
+      .then((data) => setAssignments(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        setAssignments([]);
         setError(err instanceof ApiError ? err.message : 'Failed to load assignments');
-      }
-    })();
+      })
+      .finally(() => setLoadingAssignments(false));
   }, [sectionId, accessToken]);
 
-  // no deps — tab state only changes on button clicks; assignments array comes from API
   const now = Date.now();
-  const pastDue = assignments.filter((a) => new Date(a.deadline).getTime() < now);
-  const dueSoon = assignments.filter((a) => {
-    const t = new Date(a.deadline).getTime() - now;
-    return t >= 0 && t <= 7 * 864e5;
-  });
-  const open = assignments.filter((a) => new Date(a.deadline).getTime() >= now);
 
-  function setTab(tab: 'all' | 'past' | 'due-soon' | 'open') {
-    setActiveTab(tab);
+  const counts = useMemo(() => {
+    const past = assignments.filter((a) => new Date(a.deadline).getTime() < now);
+    const dueSoon = assignments.filter((a) => {
+      const left = new Date(a.deadline).getTime() - now;
+      return left >= 0 && left <= 7 * 864e5;
+    });
+    const open = assignments.filter((a) => new Date(a.deadline).getTime() >= now);
+    return { past: past.length, dueSoon: dueSoon.length, open: open.length };
+  }, [assignments, now]);
+
+  const renderedAssignments = useMemo(() => {
+    return [...assignments]
+      .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())
+      .filter((assignment) => {
+        const left = new Date(assignment.deadline).getTime() - now;
+        if (activeTab === 'all') return true;
+        if (activeTab === 'past') return left < 0;
+        if (activeTab === 'due-soon') return left >= 0 && left <= 7 * 864e5;
+        return left > 7 * 864e5;
+      });
+  }, [assignments, activeTab, now]);
+
+  async function handleUpload(assignment: AssignmentView, file: File) {
+    if (!accessToken || uploadingFor) return;
+
+    setUploadingFor(assignment.id);
+    setError(null);
+    setStatus(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
+      const uploadResponse = await fetch(`${base}/assignments/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) throw new Error('Upload failed');
+
+      const uploaded = (await uploadResponse.json()) as { fileUrl?: string };
+      if (!uploaded.fileUrl) throw new Error('Upload did not return a file URL');
+
+      await apiFetch(`/assignments/${assignment.id}/submit`, {
+        method: 'POST',
+        token: accessToken,
+        body: JSON.stringify({ fileUrl: uploaded.fileUrl }),
+      });
+
+      setStatus(`“${assignment.title}” was submitted successfully.`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Submission failed. Please try again.');
+    } finally {
+      setUploadingFor(null);
+    }
   }
 
-  // Determine which assignments to render based on active tab
-  const renderedAssignments = assignments.filter((a) => {
-    const msLeft = new Date(a.deadline).getTime() - now;
-    const isPastDue = msLeft < 0;
-    const daysLeft = Math.ceil(msLeft / 864e5);
-    if (activeTab === 'all') return true;
-    if (activeTab === 'past') return isPastDue;
-    if (activeTab === 'due-soon') return !isPastDue && daysLeft <= 3;
-    if (activeTab === 'open') return !isPastDue && daysLeft > 3;
-    return true;
-  });
-
   return (
-    <main className="p-6 lg:p-10">
-      <PageHeader
-        eyebrow="Coursework"
-        title="Assignments"
-        subtitle="See what's due, download the brief, and submit your work before each deadline."
-      />
+    <main className="min-w-0 overflow-x-hidden bg-slate-50/50 p-4 sm:p-6 lg:p-8 xl:p-10">
+      <div className="mx-auto w-full max-w-7xl">
+        <PageHeader
+          eyebrow="Coursework"
+          title="Assignments"
+          subtitle="Keep track of deadlines, download briefs, and submit your work from one place."
+        />
 
-      <div className="mb-6 max-w-md">
-        <select
-          value={sectionId}
-          onChange={(e) => setSectionId(e.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-        >
-          {mySections.length === 0 && <option value="">No enrolled courses yet</option>}
-          {mySections.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.course.title} ({s.course.code})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Assignments" value={String(assignments.length)} />
-        <StatCard label="Open" value={String(open.length)} hint="Deadline still ahead" />
-        <StatCard label="Due within a week" value={String(dueSoon.length)} hint={dueSoon.length > 0 ? 'Plan your time' : undefined} />
-        <StatCard label="Past due" value={String(pastDue.length)} hint="Submissions closed" />
-      </div>
-
-      {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {status && <p className="mb-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{status}</p>}
-
-      {assignments.length === 0 && sectionId && (
-        <EmptyState title="No assignments posted for this course yet" hint="Your teacher hasn't published anything — check back after your next class." />
-      )}
-
-      {/* Tabs: Past Due / Due Soon / Open */}
-      <div className="mb-6 rounded-md border border-slate-300 overflow-hidden">
-        <div className="flex border-b border-slate-200">
-          <button
-            tabIndex={0}
-            role="button"
-            className="flex-1 py-2 text-sm font-medium text-slate-700 border-b-2 border-b-red-600 bg-white transition-colors hover:bg-slate-50"
-            onClick={() => setTab('past')}
-          >
-            Past Due {pastDue.length > 0 ? <span className="ml-1 text-xs text-red-600">({pastDue.length})</span> : ''}
-          </button>
-          <button
-            tabIndex={1}
-            role="button"
-            className="flex-1 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => setTab('due-soon')}
-          >
-            Due Soon {dueSoon.length > 0 ? <span className="ml-1 text-xs text-slate-500">({dueSoon.length})</span> : ''}
-          </button>
-          <button
-            tabIndex={2}
-            role="button"
-            className="flex-1 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={() => setTab('open')}
-          >
-            Open {open.length > 0 ? <span className="ml-1 text-xs text-slate-500">({open.length})</span> : ''}
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-2xl space-y-3">
-        {renderedAssignments.map((a) => {
-          const msLeft = new Date(a.deadline).getTime() - now;
-          const isPastDue = msLeft < 0;
-          const daysLeft = Math.ceil(msLeft / 864e5);
-          return (
-            <div key={a.id} className="ledger-card p-5">
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium text-slate-900">{a.title}</p>
-                {isPastDue ? (
-                  <Ribbon tone="crimson">Closed</Ribbon>
-                ) : daysLeft <= 3 ? (
-                  <Ribbon tone="gold">{daysLeft === 0 ? 'Due today' : `Due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}</Ribbon>
-                ) : (
-                  <Ribbon tone="muted">Open</Ribbon>
-                )}
-              </div>
-              {a.description && <p className="mb-2 text-sm text-slate-600">{a.description}</p>}
-              <p className="mb-3 text-xs text-slate-400">
-                Deadline {new Date(a.deadline).toLocaleString()}{' '}
-                {!isPastDue && `(${daysLeft <= 0 ? 'by the end of today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} from now`})`}
-              </p>
-
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40">
-                <span className="text-lg leading-none">↑</span>
-                <span>{uploadingFor === a.id ? 'Uploading…' : isPastDue ? 'Submissions closed' : 'Submit your work'}</span>
-                <input
-                  type="file"
-                  disabled={isPastDue || uploadingFor === a.id}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const formData = new FormData();
-                      formData.append('file', file);
-                      fetch(
-                        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/assignments/upload`,
-                        { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData }
-                      ).then((res) => {
-                        if (!res.ok) throw new Error('Upload failed');
-                        return res.json();
-                      }).then(({ fileUrl }) => {
-                        apiFetch(`/assignments/${a.id}/submit`, {
-                          method: 'POST',
-                          token: accessToken,
-                          body: JSON.stringify({ fileUrl }),
-                        }).then(() => {
-                          setStatus('Submitted successfully — your work is with the teacher.');
-                          setUploadingFor(null);
-                        }).catch(() => setError("Submission failed — check the deadline hasn't passed"));
-                      }).catch(() => setError("Submission failed — check the deadline hasn't passed"));
-                      setUploadingFor(a.id);
-                    }
-                  }}
-                  className="hidden"
-                />
-              </label>
-              {isPastDue && <p className="mt-2 text-xs text-red-500">The deadline has passed — the server rejects late submissions.</p>}
+        <section className={`${card} mb-7 mt-7 p-4 sm:p-5`}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Course</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">Choose a course to view its assignments</p>
             </div>
-          );
-        })}
+            <select
+              value={sectionId}
+              onChange={(e) => setSectionId(e.target.value)}
+              disabled={loadingSections || mySections.length === 0}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-700 outline-none focus:border-slate-400 sm:max-w-md"
+            >
+              {mySections.length === 0 && <option value="">No enrolled courses</option>}
+              {mySections.map((section) => (
+                <option key={section.id} value={section.id}>
+                  {section.course.code} · {section.course.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+
+        <div className="mb-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            ['Total', assignments.length],
+            ['Open', counts.open],
+            ['Due in 7 days', counts.dueSoon],
+            ['Past due', counts.past],
+          ].map(([label, value]) => (
+            <div key={label} className={`${card} p-4 sm:p-5`}>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</p>
+              <p className="mt-2 font-data text-2xl font-semibold text-slate-900">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {(error || status) && (
+          <div className={`mb-5 rounded-xl border px-4 py-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-700' : 'border-slate-200 bg-white text-slate-600'}`}>
+            {error ?? status}
+          </div>
+        )}
+
+        <div className="mb-5 overflow-x-auto border-b border-slate-200">
+          <div className="flex min-w-max gap-5">
+            {([
+              ['all', 'All', assignments.length],
+              ['due-soon', 'Due soon', counts.dueSoon],
+              ['open', 'Open later', Math.max(0, counts.open - counts.dueSoon)],
+              ['past', 'Past due', counts.past],
+            ] as const).map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setActiveTab(value)}
+                className={`border-b-2 px-1 pb-3 text-sm font-medium transition ${activeTab === value ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-700'}`}
+              >
+                {label} <span className="ml-1 font-data text-xs text-slate-400">{count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loadingAssignments ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((item) => <div key={item} className={`${card} h-32 animate-pulse bg-slate-100`} />)}
+          </div>
+        ) : assignments.length === 0 && sectionId ? (
+          <EmptyState title="No assignments posted yet" hint="Your teacher has not published any assignments for this course." />
+        ) : renderedAssignments.length === 0 ? (
+          <EmptyState title="Nothing in this category" hint="Try another assignment filter." />
+        ) : (
+          <div className="space-y-3">
+            {renderedAssignments.map((assignment) => {
+              const msLeft = new Date(assignment.deadline).getTime() - now;
+              const pastDue = msLeft < 0;
+              const daysLeft = Math.max(0, Math.ceil(msLeft / 864e5));
+              const urgent = !pastDue && daysLeft <= 3;
+
+              return (
+                <article key={assignment.id} className={`${card} p-4 sm:p-5`}>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-sm font-semibold text-slate-900 sm:text-base">{assignment.title}</h2>
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${pastDue ? 'bg-slate-100 text-slate-500' : urgent ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                          {pastDue ? 'Closed' : daysLeft === 0 ? 'Due today' : daysLeft <= 3 ? `Due in ${daysLeft}d` : 'Open'}
+                        </span>
+                      </div>
+                      {assignment.description && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">{assignment.description}</p>}
+                      <p className="mt-3 text-xs text-slate-400">
+                        Deadline · {new Date(assignment.deadline).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {assignment.fileUrl && (
+                        <a href={assignment.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+                          View brief
+                        </a>
+                      )}
+                      <label className={`inline-flex items-center justify-center rounded-xl px-3.5 py-2 text-sm font-medium transition ${pastDue || uploadingFor === assignment.id ? 'cursor-not-allowed bg-slate-100 text-slate-400' : 'cursor-pointer bg-slate-900 text-white hover:bg-slate-800'}`}>
+                        {uploadingFor === assignment.id ? 'Uploading…' : pastDue ? 'Closed' : 'Submit work'}
+                        <input
+                          type="file"
+                          disabled={pastDue || uploadingFor !== null}
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = '';
+                            if (file) void handleUpload(assignment, file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </div>
     </main>
   );

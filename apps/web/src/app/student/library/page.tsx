@@ -4,31 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
-import { Ribbon } from '@/components/ui/ribbon';
 
-interface Book {
-  id: string;
-  title: string;
-  author: string;
-  isbn: string;
-  availableCopies: number;
-  totalCopies: number;
-}
-
+interface Book { id: string; title: string; author: string; isbn: string; availableCopies: number; totalCopies: number }
 type ReservationStatus = 'PENDING' | 'FULFILLED' | 'CANCELLED';
-
-interface Reservation {
-  id: string;
-  status: ReservationStatus;
-  reservedAt: string;
-  book: Book;
-}
-
-const RES_STATUS_TONE: Record<ReservationStatus, 'gold' | 'emerald' | 'muted'> = {
-  PENDING: 'gold',
-  FULFILLED: 'emerald',
-  CANCELLED: 'muted',
-};
+interface Reservation { id: string; status: ReservationStatus; reservedAt: string; book: Book }
+const card = 'rounded-2xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-sm';
 
 export default function StudentLibraryPage() {
   const { accessToken, profile } = useAuth();
@@ -37,186 +17,68 @@ export default function StudentLibraryPage() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  function load() {
+  async function load() {
     if (!accessToken) return;
-    apiFetch<Book[]>('/library/books', { token: accessToken }).then(setBooks).catch(() => {});
-    if (profile?.studentId) {
-      apiFetch<Reservation[]>(`/library/reservations/mine/${profile.studentId}`, { token: accessToken })
-        .then(setReservations)
-        .catch(() => {});
+    try {
+      const bookData = await apiFetch<Book[]>('/library/books', { token: accessToken });
+      setBooks(Array.isArray(bookData) ? bookData : []);
+      if (profile?.studentId) {
+        const reservationData = await apiFetch<Reservation[]>(`/library/reservations/mine/${profile.studentId}`, { token: accessToken });
+        setReservations(Array.isArray(reservationData) ? reservationData : []);
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to load library');
     }
   }
 
-  useEffect(load, [accessToken, profile]);
+  useEffect(() => { void load(); }, [accessToken, profile?.studentId]);
 
   async function handleReserve(bookId: string) {
-    setStatus(null);
-    setError(null);
-    try {
-      await apiFetch('/library/reservations', {
-        method: 'POST',
-        token: accessToken,
-        body: JSON.stringify({ bookId }),
-      });
-      setStatus('Reserved — book held for you at the circulation desk.');
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Reservation failed');
-    }
+    if (!accessToken || busyId) return;
+    setBusyId(bookId); setStatus(null); setError(null);
+    try { await apiFetch('/library/reservations', { method: 'POST', token: accessToken, body: JSON.stringify({ bookId }) }); setStatus('Book reserved successfully.'); await load(); }
+    catch (err) { setError(err instanceof ApiError ? err.message : 'Reservation failed'); }
+    finally { setBusyId(null); }
   }
 
-  async function handleCancel(reservationId: string) {
-    setStatus(null);
-    setError(null);
-    try {
-      await apiFetch(`/library/reservations/${reservationId}/cancel`, { method: 'POST', token: accessToken });
-      setStatus('Reservation cancelled — the copy is back in circulation.');
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Cancel failed');
-    }
+  async function handleCancel(id: string) {
+    if (!accessToken || busyId) return;
+    setBusyId(id); setStatus(null); setError(null);
+    try { await apiFetch(`/library/reservations/${id}/cancel`, { method: 'POST', token: accessToken }); setStatus('Reservation cancelled.'); await load(); }
+    catch (err) { setError(err instanceof ApiError ? err.message : 'Cancel failed'); }
+    finally { setBusyId(null); }
   }
 
   async function handleClearanceRequest() {
-    setStatus(null);
-    setError(null);
-    try {
-      await apiFetch('/library/clearance', { method: 'POST', token: accessToken });
-      setStatus('Clearance request submitted — the librarian will review it shortly.');
-      load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Request failed');
-    }
+    if (!accessToken || busyId) return;
+    setBusyId('clearance'); setStatus(null); setError(null);
+    try { await apiFetch('/library/clearance', { method: 'POST', token: accessToken }); setStatus('Clearance request submitted.'); }
+    catch (err) { setError(err instanceof ApiError ? err.message : 'Request failed'); }
+    finally { setBusyId(null); }
   }
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return books;
-    return books.filter((b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.isbn.toLowerCase().includes(q));
-  }, [books, query]);
-
-  const totalCopies = books.reduce((sum, b) => sum + b.totalCopies, 0);
-  const availableCopies = books.reduce((sum, b) => sum + b.availableCopies, 0);
-  const pendingReservations = reservations.filter((r) => r.status === 'PENDING');
+  const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return q ? books.filter((book) => [book.title, book.author, book.isbn].some((value) => value.toLowerCase().includes(q))) : books; }, [books, query]);
+  const totalCopies = books.reduce((sum, book) => sum + book.totalCopies, 0);
+  const availableCopies = books.reduce((sum, book) => sum + book.availableCopies, 0);
+  const pendingReservations = reservations.filter((reservation) => reservation.status === 'PENDING');
 
   return (
-    <main className="p-6 lg:p-10">
-      <PageHeader
-        eyebrow="Library"
-        title="Books & Reservations"
-        subtitle="Browse the catalog, reserve copies, and request your end-of-term library clearance."
-        action={
-          <button
-            onClick={handleClearanceRequest}
-            className="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-          >
-            Request Clearance
-          </button>
-        }
-      />
+    <main className="min-w-0 overflow-x-hidden bg-slate-50/50 p-4 sm:p-6 lg:p-8 xl:p-10">
+      <div className="mx-auto w-full max-w-7xl">
+        <PageHeader eyebrow="Library" title="Books & Reservations" subtitle="Browse the catalogue, reserve available copies, and manage your library holds." action={<button type="button" onClick={() => void handleClearanceRequest()} disabled={busyId !== null} className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-40 sm:w-auto">{busyId === 'clearance' ? 'Submitting…' : 'Request clearance'}</button>} />
 
-      {status && <p className="mb-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{status}</p>}
-      {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {(error || status) && <div className={`mb-5 mt-7 rounded-xl border px-4 py-3 text-sm ${error ? 'border-red-200 bg-red-50 text-red-700' : 'border-slate-200 bg-white text-slate-600'}`}>{error ?? status}</div>}
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Catalog titles</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{books.length}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Copies available</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{availableCopies} <span className="text-sm font-normal text-slate-400">/ {totalCopies}</span></p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">My reservations</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{reservations.length}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Pending holds</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{pendingReservations.length}</p>
-        </div>
+        <section className={`${card} mb-7 mt-7 overflow-hidden`}><div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0"><div className="p-4 sm:p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Titles</p><p className="mt-2 font-data text-2xl font-semibold text-slate-900">{books.length}</p></div><div className="p-4 sm:p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Available</p><p className="mt-2 font-data text-2xl font-semibold text-slate-900">{availableCopies}<span className="text-xs font-normal text-slate-400"> / {totalCopies}</span></p></div><div className="p-4 sm:p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Reservations</p><p className="mt-2 font-data text-2xl font-semibold text-slate-900">{reservations.length}</p></div><div className="p-4 sm:p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Pending holds</p><p className="mt-2 font-data text-2xl font-semibold text-slate-900">{pendingReservations.length}</p></div></div></section>
+
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Catalogue</p><h2 className="mt-1 text-lg font-semibold text-slate-900">Find a book</h2></div><input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title, author or ISBN" className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-slate-400 sm:max-w-sm" /></div>
+
+        {filtered.length === 0 ? <EmptyState title={books.length === 0 ? 'Catalogue is empty' : 'No books match your search'} hint={books.length === 0 ? 'Check back later for newly added titles.' : undefined} /> : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{filtered.map((book) => { const empty = book.availableCopies <= 0; const ratio = book.totalCopies > 0 ? Math.min(1, book.availableCopies / book.totalCopies) : 0; return <article key={book.id} className={`${card} p-4 sm:p-5 ${empty ? 'opacity-75' : ''}`}><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 font-data text-[10px] font-bold text-white">BK</div><div className="min-w-0 flex-1"><h3 className="line-clamp-2 text-sm font-semibold leading-5 text-slate-900">{book.title}</h3><p className="mt-1 text-xs text-slate-500">{book.author}</p></div></div><p className="mt-4 font-data text-[10px] text-slate-400">ISBN {book.isbn}</p><div className="mt-4"><div className="mb-1.5 flex justify-between text-[11px] text-slate-400"><span>{book.availableCopies} of {book.totalCopies} available</span><span>{Math.round(ratio * 100)}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-slate-900 transition-all" style={{ width: `${ratio * 100}%` }} /></div></div><button type="button" onClick={() => void handleReserve(book.id)} disabled={empty || busyId !== null} className="mt-4 w-full rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40">{busyId === book.id ? 'Reserving…' : empty ? 'Unavailable' : 'Reserve copy'}</button></article>; })}</div>}
+
+        {reservations.length > 0 && <section className="mt-9"><div className="mb-4"><p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Your activity</p><h2 className="mt-1 text-lg font-semibold text-slate-900">My reservations</h2></div><div className="space-y-3">{reservations.map((reservation) => <article key={reservation.id} className={`${card} flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between`}><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-900">{reservation.book.title}</p><p className="mt-1 text-xs text-slate-400">{reservation.book.author} · reserved {new Date(reservation.reservedAt).toLocaleDateString()}</p></div><div className="flex items-center justify-between gap-3 sm:justify-end"><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600">{reservation.status.toLowerCase()}</span>{reservation.status === 'PENDING' && <button type="button" onClick={() => void handleCancel(reservation.id)} disabled={busyId !== null} className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:border-slate-400 hover:text-slate-900 disabled:opacity-40">{busyId === reservation.id ? 'Cancelling…' : 'Cancel'}</button>}</div></article>)}</div></section>}
       </div>
-
-      <h2 className="mb-3 font-serif text-lg font-semibold text-slate-900">Catalogue</h2>
-      <div className="mb-4 max-w-md">
-        <input
-          type="search"
-          placeholder="Search by title, author, or ISBN..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
-      </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState title={books.length === 0 ? 'Catalog is empty' : 'No books match your search'} hint={books.length === 0 ? 'Check back soon — new titles are added every term.' : undefined} />
-      ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((b) => {
-            const empty = b.availableCopies <= 0;
-            const pct = b.totalCopies > 0 ? b.availableCopies / b.totalCopies : 0;
-            return (
-              <div key={b.id} className={`ledger-card p-5 ${empty ? 'opacity-70' : ''}`}>
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <p className="font-medium text-slate-900">{b.title}</p>
-                  <Ribbon tone={empty ? 'muted' : 'emerald'}>{empty ? 'Checked out' : 'Available'}</Ribbon>
-                </div>
-                <p className="text-sm text-slate-500">{b.author}</p>
-                <p className="mb-3 font-data text-xs text-slate-400">ISBN {b.isbn}</p>
-                <div className="mb-3">
-                  <div className="mb-1 flex justify-between text-xs text-slate-500">
-                    <span>{b.availableCopies} copy{b.availableCopies === 1 ? '' : 's'} on shelf</span>
-                    <span>{Math.round(pct * 100)}%</span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={`h-full rounded-full ${empty ? 'bg-slate-300' : 'bg-green-600'}`}
-                      style={{ width: `${(b.availableCopies / b.totalCopies) * 100}%` }}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleReserve(b.id)}
-                  disabled={empty}
-                  className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-40"
-                >
-                  {empty ? 'Unavailable' : 'Reserve a Copy'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {reservations.length > 0 && (
-        <>
-          <h2 className="mb-3 mt-8 font-serif text-lg font-semibold text-slate-900">My Reservations</h2>
-          <div className="max-w-2xl space-y-2">
-            {reservations.map((r) => (
-              <div key={r.id} className="ledger-card flex flex-wrap items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-900">{r.book.title}</p>
-                  <p className="text-xs text-slate-500">
-                    {r.book.author} · reserved {new Date(r.reservedAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Ribbon tone={RES_STATUS_TONE[r.status]}>{r.status.toLowerCase()}</Ribbon>
-                  {r.status === 'PENDING' && (
-                    <button
-                      onClick={() => handleCancel(r.id)}
-                      className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:border-red-600 hover:text-red-600"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
     </main>
   );
 }

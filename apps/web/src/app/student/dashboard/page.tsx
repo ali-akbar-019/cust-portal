@@ -58,7 +58,6 @@ interface SlotView {
   section: {
     course: {
       title: string;
-      code?: string;
     };
   };
 }
@@ -75,43 +74,11 @@ interface MySection {
     title: string;
     code: string;
   };
-  enrolledCount?: number;
 }
 
-const DAY_ORDER = [
-  'MON',
-  'TUE',
-  'WED',
-  'THU',
-  'FRI',
-  'SAT',
-  'SUN',
-];
+const DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
-const TODAY_CODE =
-  DAY_ORDER[(new Date().getDay() + 6) % 7];
-
-function getCourseInitials(title: string) {
-  return title
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('');
-}
-
-function getCourseTone(index: number) {
-  const tones = [
-    'bg-slate-100 text-slate-700 border-slate-200',
-    'bg-red-50 text-red-700 border-red-100',
-    'bg-amber-50 text-amber-700 border-amber-100',
-    'bg-emerald-50 text-emerald-700 border-emerald-100',
-    'bg-violet-50 text-violet-700 border-violet-100',
-    'bg-sky-50 text-sky-700 border-sky-100',
-  ];
-
-  return tones[index % tones.length];
-}
+const TODAY_CODE = DAY_ORDER[(new Date().getDay() + 6) % 7];
 
 export default function StudentDashboardPage() {
   const { accessToken, profile } = useAuth();
@@ -131,82 +98,65 @@ export default function StudentDashboardPage() {
   const [mySections, setMySections] =
     useState<MySection[]>([]);
 
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    if (!accessToken || !profile?.studentId) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
+    if (!accessToken || !profile?.studentId) return;
 
     const studentId = profile.studentId;
 
-    Promise.allSettled([
-      apiFetch<AttendanceSummary>(
-        `/attendance/student/${studentId}`,
-        { token: accessToken }
-      ).then(setAttendance),
+    apiFetch<AttendanceSummary>(
+      `/attendance/student/${studentId}`,
+      { token: accessToken }
+    )
+      .then(setAttendance)
+      .catch(() => { });
 
-      apiFetch<GradesBreakdown>(
-        `/grades/student/${studentId}`,
-        { token: accessToken }
-      ).then(setGrades),
+    apiFetch<GradesBreakdown>(
+      `/grades/student/${studentId}`,
+      { token: accessToken }
+    )
+      .then(setGrades)
+      .catch(() => { });
 
-      apiFetch<SlotView[]>(
-        `/students/${studentId}/timetable`,
-        { token: accessToken }
-      ).then((slots) => {
+    apiFetch<SlotView[]>(
+      `/students/${studentId}/timetable`,
+      { token: accessToken }
+    )
+      .then((slots) => {
         setTodaySlots(
-          slots.filter(
-            (slot) => slot.day === TODAY_CODE
-          )
+          slots.filter((slot) => slot.day === TODAY_CODE)
         );
-      }),
+      })
+      .catch(() => { });
 
-      apiFetch<AnnouncementView[]>(
-        '/notifications',
-        { token: accessToken }
-      ).then((items) => {
+    apiFetch<AnnouncementView[]>(
+      '/notifications',
+      { token: accessToken }
+    )
+      .then((items) => {
         setAnnouncements(items.slice(0, 4));
-      }),
+      })
+      .catch(() => { });
 
-      apiFetch<MySection[]>(
-        `/students/${studentId}/sections`,
-        { token: accessToken }
-      ).then(setMySections),
-    ]).finally(() => {
-      setLoading(false);
-    });
-  }, [accessToken, profile?.studentId]);
+    apiFetch<MySection[]>(
+      `/students/${studentId}/sections`,
+      { token: accessToken }
+    )
+      .then(setMySections)
+      .catch(() => { });
+  }, [accessToken, profile]);
 
-  /*
-   * Attendance trend.
-   *
-   * Do not mutate the original API array.
-   */
   const attendanceTrend = useMemo(() => {
     return [...(attendance?.records ?? [])]
       .slice(0, 10)
       .reverse()
       .map((record) => ({
-        date: new Date(
-          record.date
-        ).toLocaleDateString(undefined, {
+        date: new Date(record.date).toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
         }),
-        value:
-          record.status === 'PRESENT' ? 1 : 0,
+        value: record.status === 'PRESENT' ? 1 : 0,
       }));
   }, [attendance]);
-
-  const latestSemester =
-    grades?.semesters[0];
-
-  const latestSemesterCourses =
-    latestSemester?.courses ?? [];
 
   const sortedTodaySlots = useMemo(() => {
     return [...todaySlots].sort((a, b) =>
@@ -214,15 +164,21 @@ export default function StudentDashboardPage() {
     );
   }, [todaySlots]);
 
+  const latestSemesterCourses =
+    grades?.semesters?.[0]?.courses ?? [];
+
+  const latestSemester =
+    grades?.semesters?.[0];
+
   return (
-    <main className="min-w-0 max-w-full overflow-x-hidden bg-slate-50/40 p-4 sm:p-6 lg:p-10">
-      {/* =========================================================
+    <main className="min-w-0 w-full max-w-full overflow-x-hidden px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-9 xl:px-10">
+      {/* =====================================================
           HEADER
-      ========================================================= */}
-      <section className="mb-7 min-w-0">
-        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      ====================================================== */}
+      <section className="mb-7 sm:mb-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <p className="mb-1 font-data text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
+            <p className="mb-1 truncate font-data text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 sm:text-[11px]">
               {profile?.enrollmentNo ?? 'Student'}
             </p>
 
@@ -230,24 +186,25 @@ export default function StudentDashboardPage() {
               Welcome back
             </h1>
 
-            <p className="mt-1 max-w-full truncate text-sm text-slate-500">
-              {profile?.email}
+            <p className="mt-1 truncate text-sm text-slate-500">
+              {profile?.email ?? ''}
             </p>
           </div>
 
           <Link
             href="/student/timetable"
-            className="inline-flex w-full shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 sm:w-auto"
+            className="inline-flex w-full shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 hover:shadow sm:w-auto"
           >
             View timetable
+            <span className="ml-2 text-slate-400">→</span>
           </Link>
         </div>
       </section>
 
-      {/* =========================================================
-          STATS
-      ========================================================= */}
-      <section className="mb-7 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* =====================================================
+          STAT CARDS
+      ====================================================== */}
+      <section className="mb-8 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           href="/student/attendance"
           label="Attendance"
@@ -267,7 +224,7 @@ export default function StudentDashboardPage() {
           href="/student/results"
           label="CGPA"
           value={
-            grades
+            grades?.cgpa != null
               ? grades.cgpa.toFixed(2)
               : '—'
           }
@@ -286,18 +243,19 @@ export default function StudentDashboardPage() {
         />
       </section>
 
-      {/* =========================================================
+      {/* =====================================================
           CHARTS
-      ========================================================= */}
+      ====================================================== */}
       <section className="mb-8 grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+        {/* Attendance Chart */}
         <ChartCard
           title="Attendance Trend"
           subtitle="Last 10 recorded classes"
         >
-          <div className="h-[210px] w-full min-w-0 sm:h-[230px]">
+          <div className="h-[210px] w-full min-w-0 sm:h-[225px]">
             {attendanceTrend.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
-                No attendance records yet.
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center text-sm text-slate-400">
+                No attendance records available.
               </div>
             ) : (
               <ResponsiveContainer
@@ -307,9 +265,9 @@ export default function StudentDashboardPage() {
                 <LineChart
                   data={attendanceTrend}
                   margin={{
-                    top: 10,
+                    top: 8,
                     right: 8,
-                    left: -22,
+                    left: -20,
                     bottom: 0,
                   }}
                 >
@@ -326,8 +284,7 @@ export default function StudentDashboardPage() {
                       fill: 'var(--color-slate-400)',
                     }}
                     axisLine={{
-                      stroke:
-                        'var(--color-slate-200)',
+                      stroke: 'var(--color-slate-200)',
                     }}
                     tickLine={false}
                     interval="preserveStartEnd"
@@ -349,18 +306,19 @@ export default function StudentDashboardPage() {
                   />
 
                   <Tooltip
-                    formatter={(value: number) =>
-                      value === 1
+                    formatter={(value) =>
+                      Number(value) === 1
                         ? 'Present'
                         : 'Absent'
                     }
                     contentStyle={{
                       fontSize: 12,
-                      borderRadius: 8,
+                      borderRadius: 10,
                       border:
                         '1px solid var(--color-slate-200)',
+                      backgroundColor: '#ffffff',
                       boxShadow:
-                        '0 4px 12px rgba(15, 23, 42, 0.08)',
+                        '0 8px 25px rgba(15, 23, 42, 0.08)',
                     }}
                   />
 
@@ -368,13 +326,15 @@ export default function StudentDashboardPage() {
                     type="stepAfter"
                     dataKey="value"
                     stroke="var(--color-slate-900)"
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                     dot={{
                       r: 3,
-                      fill: 'var(--color-red-600)',
+                      fill: 'var(--color-slate-900)',
+                      strokeWidth: 0,
                     }}
                     activeDot={{
                       r: 5,
+                      fill: 'var(--color-slate-900)',
                     }}
                   />
                 </LineChart>
@@ -383,6 +343,7 @@ export default function StudentDashboardPage() {
           </div>
         </ChartCard>
 
+        {/* Grades Chart */}
         <ChartCard
           title="Latest Semester Grades"
           subtitle={
@@ -390,10 +351,9 @@ export default function StudentDashboardPage() {
             'No grades yet'
           }
         >
-          <div className="h-[210px] w-full min-w-0 sm:h-[230px]">
-            {latestSemesterCourses.length ===
-              0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
+          <div className="h-[210px] w-full min-w-0 sm:h-[225px]">
+            {latestSemesterCourses.length === 0 ? (
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 text-center text-sm text-slate-400">
                 No grades available yet.
               </div>
             ) : (
@@ -404,9 +364,9 @@ export default function StudentDashboardPage() {
                 <BarChart
                   data={latestSemesterCourses}
                   margin={{
-                    top: 10,
+                    top: 8,
                     right: 8,
-                    left: -22,
+                    left: -20,
                     bottom: 0,
                   }}
                 >
@@ -419,12 +379,11 @@ export default function StudentDashboardPage() {
                   <XAxis
                     dataKey="courseCode"
                     tick={{
-                      fontSize: 10,
+                      fontSize: 9,
                       fill: 'var(--color-slate-400)',
                     }}
                     axisLine={{
-                      stroke:
-                        'var(--color-slate-200)',
+                      stroke: 'var(--color-slate-200)',
                     }}
                     tickLine={false}
                     interval={0}
@@ -442,22 +401,24 @@ export default function StudentDashboardPage() {
                   />
 
                   <Tooltip
-                    formatter={(value: number) =>
-                      `${value}%`
+                    formatter={(value) =>
+                      `${value ?? 0}%`
                     }
                     contentStyle={{
                       fontSize: 12,
-                      borderRadius: 8,
+                      borderRadius: 10,
                       border:
                         '1px solid var(--color-slate-200)',
+                      backgroundColor: '#ffffff',
                       boxShadow:
-                        '0 4px 12px rgba(15, 23, 42, 0.08)',
+                        '0 8px 25px rgba(15, 23, 42, 0.08)',
                     }}
                   />
 
                   <Bar
                     dataKey="percentage"
-                    radius={[4, 4, 0, 0]}
+                    radius={[5, 5, 0, 0]}
+                    maxBarSize={42}
                   >
                     {latestSemesterCourses.map(
                       (course, index) => (
@@ -466,8 +427,7 @@ export default function StudentDashboardPage() {
                           fill={
                             course.percentage >= 80
                               ? 'var(--color-green-600)'
-                              : course.percentage >=
-                                60
+                              : course.percentage >= 60
                                 ? 'var(--color-yellow-500)'
                                 : 'var(--color-red-600)'
                           }
@@ -482,109 +442,96 @@ export default function StudentDashboardPage() {
         </ChartCard>
       </section>
 
-      {/* =========================================================
+      {/* =====================================================
           MAIN CONTENT
-      ========================================================= */}
-      <section className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        {/* LEFT */}
-        <div className="min-w-0 space-y-6">
+      ====================================================== */}
+      <section className="grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)]">
+        {/* ===================================================
+            LEFT COLUMN
+        ==================================================== */}
+        <div className="min-w-0 space-y-8">
           {/* Today's Schedule */}
           <section className="min-w-0">
-            <div className="mb-3 flex items-end justify-between gap-3">
+            <div className="mb-4 flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="font-serif text-lg font-semibold text-slate-900">
+                <h2 className="font-serif text-lg font-semibold text-slate-900 sm:text-xl">
                   Today's Schedule
                 </h2>
 
                 <p className="mt-0.5 text-xs text-slate-400">
-                  {sortedTodaySlots.length === 0
-                    ? 'Nothing scheduled today'
-                    : `${sortedTodaySlots.length} class${sortedTodaySlots.length === 1
+                  {todaySlots.length > 0
+                    ? `${todaySlots.length} scheduled class${todaySlots.length === 1
                       ? ''
                       : 'es'
-                    } today`}
+                    }`
+                    : 'Nothing scheduled today'}
                 </p>
               </div>
 
               <Link
                 href="/student/timetable"
-                className="shrink-0 text-xs font-medium text-slate-600 hover:text-slate-900"
+                className="shrink-0 text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900"
               >
-                Full timetable →
+                View all →
               </Link>
             </div>
 
             {sortedTodaySlots.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-white px-5 py-8 text-center">
-                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 px-5 py-10 text-center shadow-sm backdrop-blur">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
                   ✓
                 </div>
 
-                <p className="text-sm font-medium text-slate-700">
-                  No classes today
+                <p className="text-sm font-semibold text-slate-700">
+                  No classes scheduled today
                 </p>
 
                 <p className="mt-1 text-xs text-slate-400">
-                  Enjoy the free time or check your
-                  upcoming timetable.
+                  You are free for the day.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {sortedTodaySlots.map(
                   (slot, index) => (
                     <div
                       key={`${slot.startTime}-${slot.endTime}-${index}`}
-                      className="group min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow"
+                      className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white/85 p-3 shadow-sm backdrop-blur transition-all hover:border-slate-300 hover:shadow-md sm:p-4"
                     >
                       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                         {/* Time */}
-                        <div className="w-[72px] shrink-0 text-center sm:w-[86px]">
-                          <p className="font-data text-sm font-semibold text-slate-900">
+                        <div className="w-[62px] shrink-0 text-center sm:w-[76px]">
+                          <p className="font-data text-sm font-bold text-slate-900 sm:text-base">
                             {slot.startTime}
                           </p>
 
-                          <p className="mt-0.5 text-[10px] text-slate-400">
+                          <p className="mt-0.5 font-data text-[10px] text-slate-400">
                             {slot.endTime}
                           </p>
                         </div>
 
-                        <div className="h-10 w-px shrink-0 bg-slate-200" />
+                        {/* Divider */}
+                        <div className="h-11 w-px shrink-0 bg-slate-200" />
 
                         {/* Course */}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-slate-900">
+                          <p className="truncate text-sm font-semibold text-slate-900 sm:text-[15px]">
                             {slot.section.course.title}
                           </p>
 
-                          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
-                            {slot.section.course
-                              .code && (
-                                <>
-                                  <span className="font-data font-medium text-slate-500">
-                                    {
-                                      slot.section.course
-                                        .code
-                                    }
-                                  </span>
-
-                                  <span>•</span>
-                                </>
-                              )}
-
-                            <span className="truncate">
-                              {
-                                slot.room.floor.block
-                                  .name
-                              }
-                              -
-                              {slot.room.label}
+                          <div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+                            <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                              Room
                             </span>
+
+                            <p className="truncate font-data text-xs text-slate-500">
+                              {slot.room.floor.block.name}-
+                              {slot.room.label}
+                            </p>
                           </div>
                         </div>
 
-                        {/* Arrow */}
-                        <span className="hidden shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-500 sm:block">
+                        <span className="hidden shrink-0 text-lg text-slate-300 transition-colors group-hover:text-slate-500 sm:block">
                           →
                         </span>
                       </div>
@@ -597,174 +544,143 @@ export default function StudentDashboardPage() {
 
           {/* My Courses */}
           <section className="min-w-0">
-            <div className="mb-3 flex items-end justify-between gap-3">
+            <div className="mb-4 flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="font-serif text-lg font-semibold text-slate-900">
+                <h2 className="font-serif text-lg font-semibold text-slate-900 sm:text-xl">
                   My Courses
                 </h2>
 
                 <p className="mt-0.5 text-xs text-slate-400">
                   {mySections.length > 0
-                    ? `${mySections.length} course${mySections.length === 1
+                    ? `${mySections.length} enrolled course${mySections.length === 1
                       ? ''
                       : 's'
-                    } currently enrolled`
-                    : 'Your enrolled courses'}
+                    }`
+                    : 'Currently enrolled courses'}
                 </p>
               </div>
 
               <Link
                 href="/student/enrollment"
-                className="shrink-0 text-xs font-medium text-slate-600 hover:text-slate-900"
+                className="shrink-0 text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900"
               >
-                View enrollment →
+                Enrollment →
               </Link>
             </div>
 
             {mySections.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-white px-5 py-8 text-center">
-                <p className="text-sm font-medium text-slate-700">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 px-5 py-10 text-center shadow-sm backdrop-blur">
+                <p className="text-sm font-semibold text-slate-700">
                   No enrolled courses
                 </p>
 
                 <p className="mt-1 text-xs text-slate-400">
-                  Your registered courses will appear
-                  here.
+                  Your registered courses will appear here.
                 </p>
               </div>
             ) : (
               <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-                {mySections.map(
-                  (section, index) => {
-                    const initials =
-                      getCourseInitials(
-                        section.course.title
-                      );
+                {mySections.map((section) => (
+                  <Link
+                    href="/student/enrollment"
+                    key={section.id}
+                    className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                  >
+                    <div className="flex min-w-0 items-start gap-3">
+                      {/* Solid course badge */}
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-bold uppercase tracking-tight text-white shadow-sm">
+                        {section.course.code
+                          .slice(0, 4)
+                          .toUpperCase()}
+                      </div>
 
-                    const tone =
-                      getCourseTone(index);
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate font-data text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                              {section.course.code}
+                            </p>
 
-                    return (
-                      <Link
-                        href="/student/enrollment"
-                        key={section.id}
-                        className="group min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow"
-                      >
-                        <div className="flex min-w-0 items-start gap-3">
-                          <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-xs font-bold ${tone}`}
-                          >
-                            {initials ||
-                              section.course.code
-                                .slice(0, 2)
-                                .toUpperCase()}
+                            <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-900">
+                              {section.course.title}
+                            </h3>
                           </div>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex min-w-0 items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="truncate font-data text-xs font-semibold tracking-wide text-slate-500">
-                                  {
-                                    section.course
-                                      .code
-                                  }
-                                </p>
-
-                                <h3 className="mt-0.5 line-clamp-2 text-sm font-semibold leading-5 text-slate-900">
-                                  {
-                                    section.course
-                                      .title
-                                  }
-                                </h3>
-                              </div>
-
-                              <span className="shrink-0 text-slate-300 transition group-hover:text-slate-600">
-                                →
-                              </span>
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <span className="rounded-full bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-500">
-                                Enrolled
-                              </span>
-
-                              {section.enrolledCount !==
-                                undefined && (
-                                  <span className="text-[10px] text-slate-400">
-                                    {
-                                      section.enrolledCount
-                                    }{' '}
-                                    students
-                                  </span>
-                                )}
-                            </div>
-                          </div>
+                          <span className="shrink-0 text-base text-slate-300 transition-colors group-hover:text-slate-700">
+                            →
+                          </span>
                         </div>
-                      </Link>
-                    );
-                  }
-                )}
+
+                        <div className="mt-3">
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-500">
+                            Currently enrolled
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
           </section>
         </div>
 
-        {/* RIGHT */}
-        <aside className="min-w-0">
+        {/* ===================================================
+            RIGHT COLUMN
+        ==================================================== */}
+        <div className="min-w-0 space-y-7">
+          {/* Announcements */}
           <section className="min-w-0">
-            <div className="mb-3 flex items-end justify-between gap-3">
+            <div className="mb-4 flex items-end justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="font-serif text-lg font-semibold text-slate-900">
+                <h2 className="font-serif text-lg font-semibold text-slate-900 sm:text-xl">
                   Recent Announcements
                 </h2>
 
                 <p className="mt-0.5 text-xs text-slate-400">
-                  Latest updates from the university
+                  Latest university updates
                 </p>
               </div>
 
               <Link
                 href="/student/notifications"
-                className="shrink-0 text-xs font-medium text-slate-600 hover:text-slate-900"
+                className="shrink-0 text-xs font-semibold text-slate-500 transition-colors hover:text-slate-900"
               >
                 View all →
               </Link>
             </div>
 
             {announcements.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-white px-5 py-8 text-center">
-                <p className="text-sm font-medium text-slate-700">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/80 px-5 py-10 text-center shadow-sm backdrop-blur">
+                <p className="text-sm font-semibold text-slate-700">
                   No announcements yet
                 </p>
 
                 <p className="mt-1 text-xs text-slate-400">
-                  New university updates will appear
-                  here.
+                  New updates will appear here.
                 </p>
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/85 shadow-sm backdrop-blur">
                 <div className="divide-y divide-slate-100">
                   {announcements.map(
                     (announcement) => (
                       <Link
-                        href="/student/notifications"
                         key={announcement.id}
-                        className="group block min-w-0 p-4 transition hover:bg-slate-50"
+                        href="/student/notifications"
+                        className="group block min-w-0 p-4 transition-colors hover:bg-slate-50 sm:p-4.5"
                       >
                         <div className="flex min-w-0 gap-3">
-                          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-semibold text-slate-600">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-xs font-bold text-white">
                             !
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <p className="line-clamp-2 text-sm font-medium leading-5 text-slate-800 group-hover:text-slate-950">
-                              {
-                                announcement.title
-                              }
+                            <p className="line-clamp-2 text-sm font-semibold leading-5 text-slate-800">
+                              {announcement.title}
                             </p>
 
-                            <p className="mt-1 text-[11px] text-slate-400">
+                            <p className="mt-1.5 text-[11px] text-slate-400">
                               {new Date(
                                 announcement.createdAt
                               ).toLocaleDateString(
@@ -778,7 +694,7 @@ export default function StudentDashboardPage() {
                             </p>
                           </div>
 
-                          <span className="mt-1 shrink-0 text-slate-300 transition group-hover:text-slate-600">
+                          <span className="mt-1 shrink-0 text-base text-slate-300 transition-colors group-hover:text-slate-700">
                             →
                           </span>
                         </div>
@@ -790,63 +706,65 @@ export default function StudentDashboardPage() {
             )}
           </section>
 
-          {/* Academic snapshot */}
-          <section className="mt-6 min-w-0 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          {/* Academic Overview */}
+          <section className="min-w-0 rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur sm:p-5">
             <div className="mb-4">
-              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
-                Academic snapshot
+              <p className="font-data text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                Academic Overview
               </p>
 
               <h2 className="mt-1 font-serif text-lg font-semibold text-slate-900">
-                Your progress
+                Current progress
               </h2>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400">
+              {/* CGPA */}
+              <div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                   CGPA
                 </p>
 
-                <p className="mt-1 font-data text-xl font-semibold text-slate-900">
-                  {grades
+                <p className="mt-1 truncate font-data text-xl font-bold text-slate-900">
+                  {grades?.cgpa != null
                     ? grades.cgpa.toFixed(2)
                     : '—'}
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400">
-                  Latest SGPA
+              {/* SGPA */}
+              <div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                  SGPA
                 </p>
 
-                <p className="mt-1 font-data text-xl font-semibold text-slate-900">
-                  {latestSemester
-                    ? latestSemester.sgpa.toFixed(
-                      2
-                    )
+                <p className="mt-1 truncate font-data text-xl font-bold text-slate-900">
+                  {latestSemester?.sgpa != null
+                    ? latestSemester.sgpa.toFixed(2)
                     : '—'}
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400">
+              {/* Attendance */}
+              <div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                   Attendance
                 </p>
 
-                <p className="mt-1 font-data text-xl font-semibold text-slate-900">
-                  {attendance
+                <p className="mt-1 truncate font-data text-xl font-bold text-slate-900">
+                  {attendance?.percentage != null
                     ? `${attendance.percentage}%`
                     : '—'}
                 </p>
               </div>
 
-              <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                <p className="text-[10px] uppercase tracking-wide text-slate-400">
+              {/* Courses */}
+              <div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50/80 p-3.5">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
                   Courses
                 </p>
 
-                <p className="mt-1 font-data text-xl font-semibold text-slate-900">
+                <p className="mt-1 truncate font-data text-xl font-bold text-slate-900">
                   {mySections.length}
                 </p>
               </div>
@@ -854,22 +772,16 @@ export default function StudentDashboardPage() {
 
             <Link
               href="/student/results"
-              className="mt-4 flex w-full items-center justify-center rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+              className="mt-4 flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
             >
-              View complete academic record
+              View academic record
+              <span className="ml-2 text-slate-400">
+                →
+              </span>
             </Link>
           </section>
-        </aside>
-      </section>
-
-      {/* =========================================================
-          LOADING INDICATOR
-      ========================================================= */}
-      {loading && (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-50 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 shadow-lg">
-          Updating dashboard…
         </div>
-      )}
+      </section>
     </main>
   );
 }

@@ -1,135 +1,91 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
-import { Ribbon } from '@/components/ui/ribbon';
 
-interface InvoiceView {
-  id: string;
-  description: string;
-  amount: number;
-  dueDate: string;
-  issuedAt: string;
-  paidAt: string | null;
-  status: 'PENDING' | 'PAID' | 'OVERDUE';
-}
-
-const STATUS_TONE: Record<InvoiceView['status'], 'muted' | 'emerald' | 'crimson'> = {
-  PENDING: 'muted',
-  PAID: 'emerald',
-  OVERDUE: 'crimson',
-};
-
-const fmtPKR = (n: number) => `Rs. ${n.toLocaleString()}`;
+interface InvoiceView { id: string; description: string; amount: number; dueDate: string; issuedAt: string; paidAt: string | null; status: 'PENDING' | 'PAID' | 'OVERDUE' }
+const card = 'rounded-2xl border border-slate-200 bg-white/90 shadow-sm backdrop-blur-sm';
+const fmtPKR = (n: number) => `Rs. ${n.toLocaleString('en-PK')}`;
 
 export default function StudentInvoicesPage() {
   const { accessToken, profile } = useAuth();
   const [invoices, setInvoices] = useState<InvoiceView[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
-  function load() {
+  async function load() {
     if (!accessToken || !profile?.studentId) return;
-    apiFetch<InvoiceView[]>(`/invoices/student/${profile.studentId}`, { token: accessToken })
-      .then(setInvoices)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load invoices'));
-  }
-
-  useEffect(load, [accessToken, profile]);
-
-  async function handlePay(id: string) {
-    setError(null);
     try {
-      await apiFetch(`/invoices/${id}/pay`, { method: 'POST', token: accessToken });
-      load();
+      const data = await apiFetch<InvoiceView[]>(`/invoices/student/${profile.studentId}`, { token: accessToken });
+      setInvoices(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Payment failed');
+      setError(err instanceof ApiError ? err.message : 'Failed to load invoices');
     }
   }
 
-  const paid = invoices.filter((i) => i.status === 'PAID');
-  const pending = invoices.filter((i) => i.status === 'PENDING');
-  const overdue = invoices.filter((i) => i.status === 'OVERDUE');
-  const outstandingAmount = [...pending, ...overdue].reduce((sum, i) => sum + i.amount, 0);
-  const paidAmount = paid.reduce((sum, i) => sum + i.amount, 0);
+  useEffect(() => { void load(); }, [accessToken, profile?.studentId]);
 
-  const daysUntil = (due: string) => {
-    const diff = new Date(due).getTime() - Date.now();
-    return Math.ceil(diff / 864e5);
-  };
+  async function handlePay(id: string) {
+    if (!accessToken || payingId) return;
+    setPayingId(id);
+    setError(null);
+    try {
+      await apiFetch(`/invoices/${id}/pay`, { method: 'POST', token: accessToken });
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Payment failed');
+    } finally {
+      setPayingId(null);
+    }
+  }
+
+  const paid = invoices.filter((invoice) => invoice.status === 'PAID');
+  const pending = invoices.filter((invoice) => invoice.status === 'PENDING');
+  const overdue = invoices.filter((invoice) => invoice.status === 'OVERDUE');
+  const outstandingAmount = [...pending, ...overdue].reduce((sum, invoice) => sum + invoice.amount, 0);
+  const paidAmount = paid.reduce((sum, invoice) => sum + invoice.amount, 0);
+
+  const sortedInvoices = useMemo(() => [...invoices].sort((a, b) => {
+    const rank = (status: InvoiceView['status']) => status === 'OVERDUE' ? 0 : status === 'PENDING' ? 1 : 2;
+    return rank(a.status) - rank(b.status) || new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+  }), [invoices]);
+
+  const daysUntil = (due: string) => Math.ceil((new Date(due).getTime() - Date.now()) / 864e5);
 
   return (
-    <main className="p-6 lg:p-10">
-      <PageHeader
-        eyebrow="Finance Office"
-        title="Invoices"
-        subtitle="Your fee invoices and financial account. Outstanding bills are shown first."
-      />
+    <main className="min-w-0 overflow-x-hidden bg-slate-50/50 p-4 sm:p-6 lg:p-8 xl:p-10">
+      <div className="mx-auto w-full max-w-6xl">
+        <PageHeader eyebrow="Finance Office" title="Invoices" subtitle="Review your fee invoices, due dates, and outstanding balance." />
 
-      {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <div className="mb-5 mt-7 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Outstanding balance</p>
-          <p className={`font-serif text-2xl font-semibold ${outstandingAmount > 0 ? 'text-red-600' : 'text-slate-900'}`}>{fmtPKR(outstandingAmount)}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Paid to date</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{fmtPKR(paidAmount)}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Due soon</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{pending.length}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Overdue</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{overdue.length}</p>
-        </div>
+        <section className={`${card} mb-7 mt-7 overflow-hidden`}>
+          <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-4 sm:divide-y-0">
+            <div className="p-4 sm:p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Outstanding</p><p className="mt-2 font-data text-xl font-semibold text-slate-900 sm:text-2xl">{fmtPKR(outstandingAmount)}</p></div>
+            <div className="p-4 sm:p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Paid to date</p><p className="mt-2 font-data text-xl font-semibold text-slate-900 sm:text-2xl">{fmtPKR(paidAmount)}</p></div>
+            <div className="p-4 sm:p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Pending</p><p className="mt-2 font-data text-2xl font-semibold text-slate-900">{pending.length}</p></div>
+            <div className="p-4 sm:p-5"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Overdue</p><p className="mt-2 font-data text-2xl font-semibold text-slate-900">{overdue.length}</p></div>
+          </div>
+        </section>
+
+        {sortedInvoices.length === 0 ? <EmptyState title="No invoices issued yet" hint="Bills from the finance office will appear here once issued." /> : <div className="space-y-3">{sortedInvoices.map((invoice) => {
+          const dueIn = daysUntil(invoice.dueDate);
+          const paidInvoice = invoice.status === 'PAID';
+          return <article key={invoice.id} className={`${card} p-4 sm:p-5`}>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-semibold text-slate-900 sm:text-base">{invoice.description}</h2><span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${paidInvoice ? 'bg-slate-100 text-slate-500' : 'bg-slate-900 text-white'}`}>{paidInvoice ? 'Paid' : invoice.status === 'OVERDUE' ? 'Overdue' : 'Pending'}</span></div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400"><span>Issued {new Date(invoice.issuedAt).toLocaleDateString()}</span><span>Due {new Date(invoice.dueDate).toLocaleDateString()}</span>{paidInvoice && invoice.paidAt && <span>Paid {new Date(invoice.paidAt).toLocaleDateString()}</span>}{!paidInvoice && <span className={dueIn < 0 ? 'text-slate-600' : 'text-slate-500'}>{dueIn < 0 ? `${Math.abs(dueIn)} day${Math.abs(dueIn) === 1 ? '' : 's'} overdue` : dueIn === 0 ? 'Due today' : `Due in ${dueIn} day${dueIn === 1 ? '' : 's'}`}</span>}</div>
+              </div>
+              <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end"><p className="font-data text-lg font-semibold text-slate-900">{fmtPKR(invoice.amount)}</p>{!paidInvoice && <button type="button" onClick={() => void handlePay(invoice.id)} disabled={payingId !== null} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-40">{payingId === invoice.id ? 'Processing…' : 'Pay now'}</button>}</div>
+            </div>
+          </article>;
+        })}</div>}
+
+        <p className="mt-6 text-xs leading-5 text-slate-400">Payments currently simulate settlement inside the portal; no external payment gateway is connected.</p>
       </div>
-
-      {invoices.length === 0 ? (
-        <EmptyState title="No invoices issued yet" hint="Bills from the finance office will appear here once issued." />
-      ) : (
-        <div className="max-w-2xl space-y-3">
-          {[...invoices]
-            .sort((a, b) => (a.status === 'PAID' ? 1 : 0) - (b.status === 'PAID' ? 1 : 0))
-            .map((inv) => {
-              const dueIn = daysUntil(inv.dueDate);
-              return (
-                <div key={inv.id} className="ledger-card p-5">
-                  <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium text-slate-900">{inv.description}</p>
-                    <Ribbon tone={STATUS_TONE[inv.status]}>{inv.status}</Ribbon>
-                  </div>
-                  <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-slate-500">
-                    <span className="font-data text-base font-semibold text-slate-900">{fmtPKR(inv.amount)}</span>
-                    <span>
-                      Due {new Date(inv.dueDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                      {inv.status !== 'PAID' && dueIn >= 0 && (
-                        <span className="ml-1 text-slate-400">({dueIn === 0 ? 'today' : `in ${dueIn} day${dueIn === 1 ? '' : 's'}`})</span>
-                      )}
-                      {inv.status !== 'PAID' && dueIn < 0 && <span className="ml-1 text-red-600">({Math.abs(dueIn)} day{Math.abs(dueIn) === 1 ? '' : 's'} late)</span>}
-                    </span>
-                    {inv.paidAt && <span className="text-green-700">Paid {new Date(inv.paidAt).toLocaleDateString()}</span>}
-                  </div>
-                  {inv.status !== 'PAID' && (
-                    <button
-                      onClick={() => handlePay(inv.id)}
-                      className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800"
-                    >
-                      Pay Now
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-        </div>
-      )}
-
-      <p className="mt-6 text-xs text-slate-400">
-        Note: paying an invoice simulates settlement within the portal — no external payment gateway is connected.
-      </p>
     </main>
   );
 }
