@@ -1,26 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { AdminSectionHeading, AdminStat, AdminSurface, AdminPill } from '../_components/admin-ui';
 
-interface Room {
-  id: string;
-  label: string;
-  capacity: number;
-  type: string;
-}
-interface Floor {
-  id: string;
-  floorNumber: number;
-  rooms: Room[];
-}
-interface Block {
-  id: string;
-  name: string;
-  floors: Floor[];
-}
+interface Room { id: string; label: string; capacity: number; type: string; }
+interface Floor { id: string; floorNumber: number; rooms: Room[]; }
+interface Block { id: string; name: string; floors: Floor[]; }
 
 export default function AdminBlocksPage() {
   const { accessToken } = useAuth();
@@ -30,16 +18,14 @@ export default function AdminBlocksPage() {
 
   useEffect(() => {
     if (!accessToken) return;
+    setIsLoading(true);
     apiFetch<Block[]>('/blocks', { token: accessToken })
       .then(setBlocks)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load blocks'))
       .finally(() => setIsLoading(false));
   }, [accessToken]);
 
-  if (isLoading) return <main className="p-6 lg:p-10"><PageHeader eyebrow="Campus Facilities" title="Blocks & Rooms" subtitle="Every teaching block, floor, and room on campus" /><p className="text-sm text-slate-500">Loading blocks...</p></main>;
-  if (error) return <main className="p-6 lg:p-10"><PageHeader eyebrow="Campus Facilities" title="Blocks & Rooms" /><p className="text-sm text-red-600">{error}</p></main>;
-
-  const allRooms = blocks.flatMap((b) => b.floors.flatMap((f) => f.rooms));
+  const allRooms = useMemo(() => blocks.flatMap((b) => b.floors.flatMap((f) => f.rooms)), [blocks]);
   const totalCapacity = allRooms.reduce((sum, r) => sum + r.capacity, 0);
   const totalFloors = blocks.reduce((sum, b) => sum + b.floors.length, 0);
   const typeCounts = allRooms.reduce<Record<string, number>>((acc, r) => {
@@ -49,81 +35,73 @@ export default function AdminBlocksPage() {
   }, {});
 
   return (
-    <main className="p-6 lg:p-10">
-      <PageHeader
-        eyebrow="Campus Facilities"
-        title="Blocks & Rooms"
-        subtitle="Every block, floor, and teaching room on campus — these drive timetable placement and room allocation."
-      />
+    <main className="min-w-0 p-4 sm:p-6 lg:p-10">
+      <PageHeader eyebrow="Campus Facilities" title="Blocks & Rooms" subtitle="A complete view of teaching blocks, floors, rooms, capacity, and room types." />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Blocks</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{blocks.length}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Floors</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{totalFloors}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Rooms</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{allRooms.length}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Combined capacity</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{totalCapacity}</p>
-        </div>
+      {error && <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>}
+
+      <div className="mb-8 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <AdminStat label="Blocks" value={blocks.length} />
+        <AdminStat label="Floors" value={totalFloors} />
+        <AdminStat label="Rooms" value={allRooms.length} />
+        <AdminStat label="Capacity" value={totalCapacity} detail="Combined room capacity" />
       </div>
 
-      {blocks.length === 0 ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {[1, 2].map((n) => <div key={n} className="h-48 animate-pulse rounded-2xl border border-slate-200 bg-slate-50" />)}
+        </div>
+      ) : blocks.length === 0 ? (
         <EmptyState title="No blocks configured" hint="Add blocks, floors, and rooms to enable room-aware timetable generation." />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {blocks.map((block) => {
-            const blockRooms = block.floors.flatMap((f) => f.rooms);
-            const blockCapacity = blockRooms.reduce((sum, r) => sum + r.capacity, 0);
-            return (
-              <div key={block.id} className="ledger-card overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
-                  <div>
-                    <p className="font-serif text-base font-semibold text-slate-900">Block {block.name}</p>
-                    <p className="text-xs text-slate-500">{block.floors.length} floor{block.floors.length === 1 ? '' : 's'} · {blockRooms.length} room{blockRooms.length === 1 ? '' : 's'} · capacity {blockCapacity}</p>
-                  </div>
-                </div>
-                {block.floors.map((floor) => (
-                  <div key={floor.id} className="border-b border-slate-100 px-5 py-3 last:border-b-0">
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Floor {floor.floorNumber}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {floor.rooms.map((r) => (
-                        <span
-                          key={r.id}
-                          title={`${r.type} · capacity ${r.capacity}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 font-data text-xs text-slate-600"
-                        >
-                          {r.label}
-                          <span className="text-[10px] text-slate-400">({r.capacity})</span>
-                        </span>
-                      ))}
+        <>
+          <AdminSectionHeading title="Campus blocks" subtitle={`${blocks.length} block${blocks.length === 1 ? '' : 's'} configured`} />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {blocks.map((block) => {
+              const blockRooms = block.floors.flatMap((f) => f.rooms);
+              const blockCapacity = blockRooms.reduce((sum, r) => sum + r.capacity, 0);
+              return (
+                <AdminSurface key={block.id} className="overflow-hidden">
+                  <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="font-serif text-xl font-semibold text-slate-950">Block {block.name}</h3>
+                      <p className="mt-1 text-xs text-slate-500">{block.floors.length} floors · {blockRooms.length} rooms · {blockCapacity} seats</p>
                     </div>
+                    <AdminPill>{blockRooms.length} rooms</AdminPill>
                   </div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
-      {allRooms.length > 0 && (
-        <div className="mt-8 max-w-xl">
-          <p className="mb-3 font-serif text-base font-semibold text-slate-900">Room types</p>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(typeCounts).map(([type, count]) => (
-              <span key={type} className="rounded-md border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600">
-                <span className="font-semibold text-slate-900">{count}</span> × {type}
-              </span>
-            ))}
+                  <div className="divide-y divide-slate-100">
+                    {block.floors.map((floor) => (
+                      <div key={floor.id} className="px-5 py-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Floor {floor.floorNumber}</p>
+                          <span className="text-xs text-slate-400">{floor.rooms.length} room{floor.rooms.length === 1 ? '' : 's'}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                          {floor.rooms.map((room) => (
+                            <div key={room.id} title={`${room.type || 'General'} · capacity ${room.capacity}`} className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
+                              <p className="font-data text-sm font-semibold text-slate-800">{room.label}</p>
+                              <p className="mt-0.5 text-[11px] text-slate-400">{room.capacity} seats · {room.type || 'General'}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AdminSurface>
+              );
+            })}
           </div>
-        </div>
+
+          {allRooms.length > 0 && (
+            <div className="mt-8">
+              <AdminSectionHeading title="Room types" subtitle="Distribution across all configured rooms" />
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(typeCounts).map(([type, count]) => <AdminPill key={type}><strong className="mr-1">{count}</strong> {type}</AdminPill>)}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </main>
   );

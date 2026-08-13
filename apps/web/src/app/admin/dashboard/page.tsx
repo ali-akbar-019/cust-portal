@@ -1,41 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api-client';
-import { StatCard } from '@/components/ui/stat-card';
-import { QuickLinkCard } from '@/components/ui/quick-link-card';
 import { ChartCard } from '@/components/ui/chart-card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { AdminSectionHeading, AdminStat, AdminSurface } from '../_components/admin-ui';
 
-interface StudentRow {
-  department: { name: string; code: string };
-}
-interface TeacherRow {
-  department: { name: string; code: string };
-}
-interface ComplaintRow {
-  status: string;
-}
-interface RequestRow {
-  status: string;
-}
-interface ClearanceRow {
-  id: string;
-}
+interface StudentRow { department: { name: string; code: string }; }
+interface TeacherRow { department: { name: string; code: string }; }
+interface ComplaintRow { status: string; }
+interface RequestRow { status: string; }
+interface ClearanceRow { id: string; }
 
 const LINKS = [
-  { href: '/admin/blocks', label: 'Blocks & Rooms', desc: 'View campus blocks, floors, and rooms' },
-  { href: '/admin/timetable-generator', label: 'Timetable Generator', desc: "Auto-generate a department's timetable" },
-  { href: '/admin/users', label: 'Manage Users', desc: 'Add new students and teachers' },
-  { href: '/admin/notifications', label: 'Announcements', desc: 'Post announcements to everyone, a department, or a section' },
-  { href: '/admin/invoices', label: 'Invoices', desc: 'Create fee invoices for students' },
-  { href: '/admin/library', label: 'Library Clearances', desc: 'Approve or reject pending clearance requests' },
-  { href: '/admin/complaints', label: 'Complaints', desc: 'Triage and resolve student complaints' },
-  { href: '/admin/requests', label: 'Requests', desc: 'Transcripts, letters, course withdrawals, and more' },
+  { href: '/admin/blocks', label: 'Blocks & Rooms', desc: 'Review campus facilities and room capacity.' },
+  { href: '/admin/timetable-generator', label: 'Timetable Generator', desc: 'Generate and inspect department schedules.' },
+  { href: '/admin/users', label: 'Manage Users', desc: 'Create student and teacher accounts.' },
+  { href: '/admin/notifications', label: 'Announcements', desc: 'Publish targeted university notices.' },
+  { href: '/admin/invoices', label: 'Invoices', desc: 'Issue and review student fee invoices.' },
+  { href: '/admin/library', label: 'Library Clearances', desc: 'Resolve pending clearance requests.' },
+  { href: '/admin/complaints', label: 'Complaints', desc: 'Review, respond to, and resolve complaints.' },
+  { href: '/admin/requests', label: 'Requests', desc: 'Process registrar and student requests.' },
 ];
-
-const PIE_COLORS = ['var(--color-slate-900)', 'var(--color-red-600)', 'var(--color-yellow-500)', 'var(--color-green-600)', 'var(--color-blue-600)'];
 
 export default function AdminDashboardPage() {
   const { accessToken, profile } = useAuth();
@@ -54,9 +42,11 @@ export default function AdminDashboardPage() {
     apiFetch<ClearanceRow[]>('/library/clearance/pending', { token: accessToken }).then(setClearances).catch(() => {});
   }, [accessToken]);
 
-  const deptCounts = new Map<string, number>();
-  students.forEach((s) => deptCounts.set(s.department.code, (deptCounts.get(s.department.code) ?? 0) + 1));
-  const deptChartData = [...deptCounts.entries()].map(([code, count]) => ({ code, count }));
+  const deptChartData = useMemo(() => {
+    const counts = new Map<string, number>();
+    students.forEach((s) => counts.set(s.department.code, (counts.get(s.department.code) ?? 0) + 1));
+    return [...counts.entries()].map(([code, count]) => ({ code, count }));
+  }, [students]);
 
   const roleData = [
     { name: 'Students', value: students.length },
@@ -65,63 +55,91 @@ export default function AdminDashboardPage() {
 
   const openComplaints = complaints.filter((c) => c.status === 'OPEN').length;
   const pendingRequests = requests.filter((r) => r.status === 'PENDING').length;
+  const attentionTotal = openComplaints + pendingRequests + clearances.length;
 
   return (
-    <main className="p-6 lg:p-10">
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Administration</p>
-      <h1 className="mb-1 font-serif text-2xl font-semibold text-slate-900">Dashboard</h1>
-      <p className="mb-8 text-sm text-slate-500">{profile?.email}</p>
+    <main className="min-w-0 p-4 sm:p-6 lg:p-10">
+      <header className="mb-7 border-b border-slate-200/80 pb-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Administration</p>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="font-serif text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">Dashboard</h1>
+            <p className="mt-1 text-sm text-slate-500">{profile?.email ?? 'University administration overview'}</p>
+          </div>
+          <p className="text-xs text-slate-400">Live overview</p>
+        </div>
+      </header>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Students" value={String(students.length)} />
-        <StatCard label="Total Teachers" value={String(teachers.length)} />
-        <StatCard href="/admin/complaints" label="Open Complaints" value={String(openComplaints)} hint={openComplaints > 0 ? 'Needs attention' : undefined} />
-        <StatCard href="/admin/requests" label="Pending Requests" value={String(pendingRequests)} />
+      <div className="mb-8 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <AdminStat label="Students" value={students.length} detail="Accounts on record" />
+        <AdminStat label="Teachers" value={teachers.length} detail="Faculty accounts" />
+        <AdminStat href="/admin/complaints" label="Open complaints" value={openComplaints} detail={openComplaints ? 'Requires attention' : 'Nothing pending'} />
+        <AdminStat href="/admin/requests" label="Pending requests" value={pendingRequests} detail="Waiting for review" />
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title="Students by Department">
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={deptChartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+      {attentionTotal > 0 && (
+        <AdminSurface className="mb-8 overflow-hidden">
+          <div className="flex flex-col gap-4 border-l-4 border-slate-950 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-950">Attention required</p>
+              <p className="mt-1 text-sm text-slate-500">
+                {openComplaints > 0 && `${openComplaints} complaint${openComplaints === 1 ? '' : 's'}`}
+                {openComplaints > 0 && pendingRequests > 0 ? ' · ' : ''}
+                {pendingRequests > 0 && `${pendingRequests} request${pendingRequests === 1 ? '' : 's'}`}
+                {(openComplaints > 0 || pendingRequests > 0) && clearances.length > 0 ? ' · ' : ''}
+                {clearances.length > 0 && `${clearances.length} library clearance${clearances.length === 1 ? '' : 's'}`}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {openComplaints > 0 && <Link className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" href="/admin/complaints">Review complaints</Link>}
+              {pendingRequests > 0 && <Link className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50" href="/admin/requests">Review requests</Link>}
+            </div>
+          </div>
+        </AdminSurface>
+      )}
+
+      <div className="mb-9 grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <ChartCard title="Students by Department" subtitle="Current student distribution">
+          <ResponsiveContainer width="100%" height={230}>
+            <BarChart data={deptChartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-slate-100)" />
-              <XAxis dataKey="code" tick={{ fontSize: 11, fill: 'var(--color-slate-400)' }} axisLine={{ stroke: 'var(--color-slate-200)' }} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--color-slate-400)' }} axisLine={false} tickLine={false} width={24} />
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--color-slate-200)' }} />
-              <Bar dataKey="count" fill="var(--color-slate-900)" radius={[4, 4, 0, 0]} />
+              <XAxis dataKey="code" tick={{ fontSize: 11, fill: 'var(--color-slate-400)' }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'var(--color-slate-400)' }} axisLine={false} tickLine={false} width={28} />
+              <Tooltip cursor={{ fill: 'var(--color-slate-50)' }} contentStyle={{ fontSize: 12, borderRadius: 10, border: '1px solid var(--color-slate-200)', boxShadow: '0 4px 16px rgba(15,23,42,.08)' }} />
+              <Bar dataKey="count" fill="var(--color-slate-900)" radius={[5, 5, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Faculty vs. Students">
-          <ResponsiveContainer width="100%" height={200}>
+        <ChartCard title="University Accounts" subtitle="Students compared with teaching staff">
+          <ResponsiveContainer width="100%" height={230}>
             <PieChart>
-              <Pie data={roleData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75} paddingAngle={3}>
-                {roleData.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                ))}
+              <Pie data={roleData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={82} paddingAngle={2}>
+                <Cell fill="var(--color-slate-900)" />
+                <Cell fill="var(--color-slate-300)" />
               </Pie>
-              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--color-slate-200)' }} />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 10, border: '1px solid var(--color-slate-200)' }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
       </div>
 
-      {(clearances.length > 0 || openComplaints > 0 || pendingRequests > 0) && (
-        <div className="mb-8 ledger-card border-l-4 border-l-red-600 p-4">
-          <p className="mb-1 font-serif text-base font-semibold text-slate-900">Needs your attention</p>
-          <p className="text-sm text-slate-600">
-            {openComplaints > 0 && <span className="font-medium">{openComplaints} open complaint(s)</span>}
-            {pendingRequests > 0 && <span className="ml-2 font-medium">{pendingRequests} pending request(s)</span>}
-            {clearances.length > 0 && <span className="ml-2 font-medium">{clearances.length} pending library clearance(s)</span>}
-          </p>
-        </div>
-      )}
-
-      <h2 className="mb-3 font-serif text-lg font-semibold text-slate-900">Quick Actions</h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {LINKS.map((l) => (
-          <QuickLinkCard key={l.href} {...l} />
+      <AdminSectionHeading title="Administration" subtitle="Common tasks and operational areas" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {LINKS.map((item, index) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+          >
+            <div className="mb-8 flex items-center justify-between">
+              <span className="font-data text-[11px] text-slate-400">0{index + 1}</span>
+              <span className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-700">→</span>
+            </div>
+            <p className="font-medium text-slate-950">{item.label}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{item.desc}</p>
+          </Link>
         ))}
       </div>
     </main>

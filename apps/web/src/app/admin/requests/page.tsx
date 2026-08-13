@@ -1,37 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
-import { Ribbon } from '@/components/ui/ribbon';
+import { AdminButton, AdminMessage, AdminPill, AdminSectionHeading, AdminStat, AdminSurface, inputClass } from '../_components/admin-ui';
 
 type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 type RequestType = 'TRANSCRIPT' | 'LETTER' | 'COURSE_WITHDRAW' | 'PERSONAL_INFO_CHANGE' | 'GENERAL';
+interface RequestView { id: string; type: RequestType; details: string; status: RequestStatus; adminRemarks?: string | null; createdAt: string; student: { enrollmentNo: string; user: { email: string } }; }
 
-interface RequestView {
-  id: string;
-  type: RequestType;
-  details: string;
-  status: RequestStatus;
-  adminRemarks?: string | null;
-  createdAt: string;
-  student: { enrollmentNo: string; user: { email: string } };
-}
-
-const STATUS_TONE: Record<RequestStatus, 'muted' | 'emerald' | 'crimson'> = {
-  PENDING: 'muted',
-  APPROVED: 'emerald',
-  REJECTED: 'crimson',
-};
-
-const TYPE_LABEL: Record<RequestType, string> = {
-  TRANSCRIPT: 'Transcript',
-  LETTER: 'Letter',
-  COURSE_WITHDRAW: 'Course Withdraw',
-  PERSONAL_INFO_CHANGE: 'Personal Info Change',
-  GENERAL: 'General',
-};
+const STATUS_LABEL: Record<RequestStatus, string> = { PENDING: 'Pending', APPROVED: 'Approved', REJECTED: 'Rejected' };
+const TYPE_LABEL: Record<RequestType, string> = { TRANSCRIPT: 'Transcript', LETTER: 'Letter', COURSE_WITHDRAW: 'Course withdrawal', PERSONAL_INFO_CHANGE: 'Personal info change', GENERAL: 'General' };
 
 export default function AdminRequestsPage() {
   const { accessToken } = useAuth();
@@ -39,6 +19,7 @@ export default function AdminRequestsPage() {
   const [remarks, setRemarks] = useState<Record<string, string>>({});
   const [typeFilter, setTypeFilter] = useState<'ALL' | RequestType>('ALL');
   const [error, setError] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   function load() {
     if (!accessToken) return;
@@ -46,122 +27,79 @@ export default function AdminRequestsPage() {
       .then(setRequests)
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load requests'));
   }
-
   useEffect(load, [accessToken]);
 
   async function resolve(id: string, status: 'APPROVED' | 'REJECTED') {
+    setError(null); setSavingId(id);
     try {
-      await apiFetch(`/requests/${id}`, {
-        method: 'PUT',
-        token: accessToken,
-        body: JSON.stringify({ status, adminRemarks: remarks[id] }),
-      });
+      await apiFetch(`/requests/${id}`, { method: 'PUT', token: accessToken, body: JSON.stringify({ status, adminRemarks: remarks[id]?.trim() || undefined }) });
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to resolve request');
-    }
+    } finally { setSavingId(null); }
   }
 
   const pendingCount = requests.filter((r) => r.status === 'PENDING').length;
   const approvedCount = requests.filter((r) => r.status === 'APPROVED').length;
   const withdrawnCount = requests.filter((r) => r.type === 'COURSE_WITHDRAW').length;
-  const typeCounts = requests.reduce<Record<string, number>>((acc, r) => {
-    acc[r.type] = (acc[r.type] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const filtered = typeFilter === 'ALL' ? requests : requests.filter((r) => r.type === typeFilter);
+  const filtered = useMemo(() => typeFilter === 'ALL' ? requests : requests.filter((r) => r.type === typeFilter), [requests, typeFilter]);
   const types: (RequestType | 'ALL')[] = ['ALL', 'TRANSCRIPT', 'LETTER', 'COURSE_WITHDRAW', 'PERSONAL_INFO_CHANGE', 'GENERAL'];
 
   return (
-    <main className="p-6 lg:p-10">
-      <PageHeader
-        eyebrow="Registrar Office"
-        title="Requests Triage"
-        subtitle="Approve or reject student requests. Approving a course-withdraw frees the section seat automatically."
-      />
+    <main className="min-w-0 p-4 sm:p-6 lg:p-10">
+      <PageHeader eyebrow="Registrar Office" title="Requests Triage" subtitle="Process transcript, letter, withdrawal, personal-information, and general requests." />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Total</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{requests.length}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Pending action</p>
-          <p className="font-serif text-2xl font-semibold text-yellow-500">{pendingCount}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Approved</p>
-          <p className="font-serif text-2xl font-semibold text-green-700">{approvedCount}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Course-withdraw requests</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{withdrawnCount}</p>
-        </div>
+      <div className="mb-8 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <AdminStat label="Total" value={requests.length} />
+        <AdminStat label="Pending" value={pendingCount} detail="Needs action" />
+        <AdminStat label="Approved" value={approvedCount} />
+        <AdminStat label="Withdrawals" value={withdrawnCount} />
       </div>
 
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+      {error && <div className="mb-5"><AdminMessage tone="error">{error}</AdminMessage></div>}
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
-        {types.filter((t) => t === 'ALL' || (typeCounts[t] ?? 0) > 0).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTypeFilter(t)}
-            className={`rounded-md px-3 py-1 text-xs font-medium transition ${
-              typeFilter === t ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            {t === 'ALL' ? 'All types' : TYPE_LABEL[t]}
-            {t !== 'ALL' && <span className="ml-1 opacity-70">{typeCounts[t]}</span>}
+      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        {types.filter((t) => t === 'ALL' || requests.some((r) => r.type === t)).map((t) => (
+          <button key={t} type="button" onClick={() => setTypeFilter(t)} className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-medium transition ${typeFilter === t ? 'border-slate-950 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-900'}`}>
+            {t === 'ALL' ? 'All types' : TYPE_LABEL[t]}{t !== 'ALL' && <span className="ml-1.5 opacity-70">{requests.filter((r) => r.type === t).length}</span>}
           </button>
         ))}
       </div>
 
+      <AdminSectionHeading title="Request queue" subtitle={`${filtered.length} visible request${filtered.length === 1 ? '' : 's'}`} />
+
       {filtered.length === 0 ? (
-        <EmptyState title={requests.length === 0 ? 'No requests on file' : 'No requests of this type'} hint={requests.length === 0 ? 'Student requests land here as soon as they are filed.' : undefined} />
+        <EmptyState title={requests.length === 0 ? 'No requests on file' : 'No requests match this filter'} hint="Student requests appear here as soon as they are submitted." />
       ) : (
-        <div className="max-w-2xl space-y-3">
+        <div className="space-y-3">
           {filtered.map((r) => (
-            <div key={r.id} className="ledger-card p-5">
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium text-slate-900">{TYPE_LABEL[r.type]}</p>
-                <Ribbon tone={STATUS_TONE[r.status]}>{r.status}</Ribbon>
-              </div>
-              <p className="mb-2 text-sm text-slate-600">{r.details}</p>
-              <p className="mb-3 text-xs text-slate-400">
-                <span className="font-data">{r.student.enrollmentNo}</span> · {r.student.user.email} · filed {new Date(r.createdAt).toLocaleString()}
-              </p>
-              {r.status === 'PENDING' ? (
-                <>
-                  <textarea
-                    placeholder="Remarks (optional) — shown to the student"
-                    value={remarks[r.id] ?? ''}
-                    onChange={(e) => setRemarks((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                    rows={2}
-                    className="mb-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => resolve(r.id, 'APPROVED')}
-                      className="rounded-md bg-green-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-green-700"
-                    >
-                      Approve{r.type === 'COURSE_WITHDRAW' ? ' & Withdraw Course' : ''}
-                    </button>
-                    <button
-                      onClick={() => resolve(r.id, 'REJECTED')}
-                      className="rounded-md bg-red-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-red-700"
-                    >
-                      Reject
-                    </button>
+            <AdminSurface key={r.id} className="p-5 sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AdminPill tone="dark">{TYPE_LABEL[r.type]}</AdminPill>
+                    <AdminPill tone={r.status === 'PENDING' ? 'warning' : r.status === 'APPROVED' ? 'success' : 'danger'}>{STATUS_LABEL[r.status]}</AdminPill>
                   </div>
-                </>
-              ) : (
-                <p className="text-xs text-slate-400">
-                  Resolved with status {r.status.toLowerCase()}
-                  {remarks[r.id] || r.adminRemarks ? ` — ${remarks[r.id] ?? r.adminRemarks}` : ''}
-                </p>
-              )}
-            </div>
+                  <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-700">{r.details}</p>
+                  <p className="mt-3 text-xs text-slate-400"><span className="font-data">{r.student.enrollmentNo}</span> · {r.student.user.email} · filed {new Date(r.createdAt).toLocaleString()}</p>
+                </div>
+
+                {r.status === 'PENDING' ? (
+                  <div className="w-full shrink-0 lg:max-w-sm">
+                    <textarea className={`${inputClass} min-h-20 resize-y`} rows={2} placeholder="Remarks for the student (optional)" value={remarks[r.id] ?? ''} onChange={(e) => setRemarks((prev) => ({ ...prev, [r.id]: e.target.value }))} />
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                      <AdminButton disabled={savingId === r.id} onClick={() => resolve(r.id, 'APPROVED')} className="flex-1">{savingId === r.id ? 'Saving…' : r.type === 'COURSE_WITHDRAW' ? 'Approve & withdraw' : 'Approve'}</AdminButton>
+                      <AdminButton variant="secondary" disabled={savingId === r.id} onClick={() => resolve(r.id, 'REJECTED')} className="flex-1">Reject</AdminButton>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full shrink-0 rounded-xl bg-slate-50 p-4 lg:max-w-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Resolution</p>
+                    <p className="mt-2 text-sm text-slate-600">{r.adminRemarks || 'No remarks were recorded.'}</p>
+                  </div>
+                )}
+              </div>
+            </AdminSurface>
           ))}
         </div>
       )}

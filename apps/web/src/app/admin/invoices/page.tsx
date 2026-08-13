@@ -1,30 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
-import { Ribbon } from '@/components/ui/ribbon';
+import { AdminButton, AdminField, AdminMessage, AdminPill, AdminSectionHeading, AdminStat, AdminSurface, inputClass, selectClass } from '../_components/admin-ui';
 
-interface StudentOption {
-  id: string;
-  enrollmentNo: string;
-  user: { email: string };
-  department: { code: string };
-}
-interface InvoiceView {
-  id: string;
-  description: string;
-  amount: number;
-  dueDate: string;
-  status: 'PENDING' | 'PAID' | 'OVERDUE';
-}
+interface StudentOption { id: string; enrollmentNo: string; user: { email: string }; department: { code: string }; }
+interface InvoiceView { id: string; description: string; amount: number; dueDate: string; status: 'PENDING' | 'PAID' | 'OVERDUE'; }
 
-const STATUS_TONE: Record<InvoiceView['status'], 'muted' | 'emerald' | 'crimson'> = {
-  PENDING: 'muted',
-  PAID: 'emerald',
-  OVERDUE: 'crimson',
-};
+const money = (amount: number) => `Rs. ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function AdminInvoicesPage() {
   const { accessToken } = useAuth();
@@ -32,170 +17,111 @@ export default function AdminInvoicesPage() {
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [studentInvoices, setStudentInvoices] = useState<InvoiceView[]>([]);
-
   const [form, setForm] = useState({ description: '', amount: '', dueDate: '' });
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!accessToken) return;
-    apiFetch<StudentOption[]>('/students', { token: accessToken }).then(setStudents).catch(() => {});
+    apiFetch<StudentOption[]>('/students', { token: accessToken }).then(setStudents).catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load students'));
   }, [accessToken]);
 
   useEffect(() => {
-    if (!selectedStudentId || !accessToken) return;
-    apiFetch<InvoiceView[]>(`/invoices/student/${selectedStudentId}`, { token: accessToken })
-      .then(setStudentInvoices)
-      .catch(() => setStudentInvoices([]));
-  }, [selectedStudentId, accessToken]);
-
-  const departments = [...new Map(students.map((s) => [s.department.code, s.department.code])).values()];
-  const filteredStudents = departmentFilter ? students.filter((s) => s.department.code === departmentFilter) : students;
-  const selectedStudent = students.find((s) => s.id === selectedStudentId);
-
-  function update(field: keyof typeof form, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  async function handleSubmit() {
-    setStatus(null);
-    setError(null);
-    if (!selectedStudentId) {
-      setError('Choose a student first');
+    if (!selectedStudentId || !accessToken) {
+      setStudentInvoices([]);
       return;
     }
+    apiFetch<InvoiceView[]>(`/invoices/student/${selectedStudentId}`, { token: accessToken })
+      .then(setStudentInvoices)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load invoices'));
+  }, [selectedStudentId, accessToken]);
+
+  const departments = useMemo(() => [...new Set(students.map((s) => s.department.code))], [students]);
+  const filteredStudents = useMemo(() => departmentFilter ? students.filter((s) => s.department.code === departmentFilter) : students, [students, departmentFilter]);
+  const selectedStudent = students.find((s) => s.id === selectedStudentId);
+  const outstanding = studentInvoices.filter((i) => i.status !== 'PAID').reduce((sum, i) => sum + i.amount, 0);
+
+  function update(field: keyof typeof form, value: string) { setForm((prev) => ({ ...prev, [field]: value })); }
+
+  async function handleSubmit() {
+    setStatus(null); setError(null);
+    if (!selectedStudentId) { setError('Choose a student first.'); return; }
+    const amount = Number(form.amount);
+    if (!form.description.trim() || !Number.isFinite(amount) || amount <= 0 || !form.dueDate) { setError('Enter a description, a valid amount, and a due date.'); return; }
+    setSaving(true);
     try {
-      await apiFetch('/invoices', {
-        method: 'POST',
-        token: accessToken,
-        body: JSON.stringify({ studentId: selectedStudentId, ...form, amount: Number(form.amount) }),
-      });
+      await apiFetch('/invoices', { method: 'POST', token: accessToken, body: JSON.stringify({ studentId: selectedStudentId, description: form.description.trim(), amount, dueDate: form.dueDate }) });
       setStatus(`Invoice for ${selectedStudent?.enrollmentNo ?? selectedStudentId} created.`);
       setForm({ description: '', amount: '', dueDate: '' });
       const data = await apiFetch<InvoiceView[]>(`/invoices/student/${selectedStudentId}`, { token: accessToken });
       setStudentInvoices(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create invoice');
-    }
+    } finally { setSaving(false); }
   }
 
-  const outstanding = studentInvoices
-    .filter((i) => i.status !== 'PAID')
-    .reduce((sum, i) => sum + i.amount, 0);
-
   return (
-    <main className="p-6 lg:p-10">
-      <PageHeader
-        eyebrow="Finance Office"
-        title="Invoices"
-        subtitle="Look up a student's account, then issue a new fee invoice against it."
-      />
+    <main className="min-w-0 p-4 sm:p-6 lg:p-10">
+      <PageHeader eyebrow="Finance Office" title="Invoices" subtitle="Select a student, review their ledger, and issue a new fee invoice." />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Students on record</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{students.length}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Selected student</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{selectedStudent ? selectedStudent.enrollmentNo : '—'}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Their outstanding</p>
-          <p className="font-serif text-2xl font-semibold text-red-600">Rs. {outstanding.toLocaleString()}</p>
-        </div>
-        <div className="ledger-card p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Their invoices</p>
-          <p className="font-serif text-2xl font-semibold text-slate-900">{studentInvoices.length}</p>
-        </div>
+      <div className="mb-8 grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <AdminStat label="Students" value={students.length} detail="Available accounts" />
+        <AdminStat label="Selected" value={selectedStudent?.enrollmentNo ?? '—'} />
+        <AdminStat label="Outstanding" value={selectedStudent ? money(outstanding) : '—'} />
+        <AdminStat label="Invoices" value={selectedStudent ? studentInvoices.length : '—'} />
       </div>
 
-      <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="ledger-card space-y-3 p-6">
-          <p className="font-serif text-base font-semibold text-slate-900">1 · Pick a student</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">All departments</option>
-              {departments.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-            <select
-              value={selectedStudentId}
-              onChange={(e) => setSelectedStudentId(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="">Select a student…</option>
-              {filteredStudents.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.enrollmentNo} · {s.user.email}
-                </option>
-              ))}
-            </select>
+      <div className="mb-8 grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <AdminSurface className="p-5 sm:p-6">
+          <AdminSectionHeading title="1. Select student" subtitle="Filter by department, then choose the account." />
+          <div className="space-y-4">
+            <AdminField label="Department">
+              <select className={selectClass} value={departmentFilter} onChange={(e) => { setDepartmentFilter(e.target.value); setSelectedStudentId(''); }}>
+                <option value="">All departments</option>
+                {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </AdminField>
+            <AdminField label="Student">
+              <select className={selectClass} value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)}>
+                <option value="">Select a student…</option>
+                {filteredStudents.map((s) => <option key={s.id} value={s.id}>{s.enrollmentNo} · {s.user.email}</option>)}
+              </select>
+            </AdminField>
+            {selectedStudent && <div className="rounded-xl bg-slate-50 p-4 text-sm"><p className="font-medium text-slate-900">{selectedStudent.enrollmentNo}</p><p className="mt-1 text-xs text-slate-500">{selectedStudent.department.code} · {selectedStudent.user.email}</p></div>}
           </div>
-          {selectedStudent && (
-            <p className="text-xs text-slate-500">
-              Billing <span className="font-data">{selectedStudent.enrollmentNo}</span> ({selectedStudent.department.code}) — {selectedStudent.user.email}
-            </p>
-          )}
-        </div>
+        </AdminSurface>
 
-        <div className="ledger-card space-y-3 p-6">
-          <p className="font-serif text-base font-semibold text-slate-900">2 · Issue an invoice</p>
-          <input
-            placeholder="Description (e.g. Semester Fee)"
-            value={form.description}
-            onChange={(e) => update('description', e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              placeholder="Amount (PKR)"
-              type="number"
-              value={form.amount}
-              onChange={(e) => update('amount', e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-            <input
-              type="date"
-              value={form.dueDate}
-              onChange={(e) => update('dueDate', e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {status && <p className="text-sm text-green-700">{status}</p>}
-          <button
-            onClick={handleSubmit}
-            disabled={!selectedStudentId || !form.description.trim() || !form.amount}
-            className="w-full rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-40"
-          >
-            Create Invoice
-          </button>
-        </div>
-      </div>
-
-      <p className="mb-3 font-serif text-lg font-semibold text-slate-900">Ledger — {selectedStudent ? selectedStudent.enrollmentNo : 'select a student'}</p>
-      {!selectedStudent ? (
-        <EmptyState title="No student selected" hint="Choose a student above to view their invoices." />
-      ) : studentInvoices.length === 0 ? (
-        <EmptyState title="No invoices for this student yet" />
-      ) : (
-        <div className="max-w-2xl space-y-2">
-          {studentInvoices.map((inv) => (
-            <div key={inv.id} className="ledger-card flex flex-wrap items-center justify-between gap-3 p-4">
-              <div>
-                <p className="font-medium text-slate-900">{inv.description}</p>
-                <p className="text-xs text-slate-500">
-                  Due {new Date(inv.dueDate).toLocaleDateString()} · Rs. {inv.amount.toLocaleString()}
-                </p>
-              </div>
-              <Ribbon tone={STATUS_TONE[inv.status]}>{inv.status}</Ribbon>
+        <AdminSurface className="p-5 sm:p-6">
+          <AdminSectionHeading title="2. Issue invoice" subtitle="Create a new charge against the selected student." />
+          <div className="space-y-4">
+            <AdminField label="Description"><input className={inputClass} placeholder="Semester Fee" value={form.description} onChange={(e) => update('description', e.target.value)} /></AdminField>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AdminField label="Amount (PKR)"><input className={inputClass} type="number" min="0" step="0.01" inputMode="decimal" placeholder="50000.00" value={form.amount} onChange={(e) => update('amount', e.target.value)} /></AdminField>
+              <AdminField label="Due date"><input className={inputClass} type="date" value={form.dueDate} onChange={(e) => update('dueDate', e.target.value)} /></AdminField>
             </div>
+            {error && <AdminMessage tone="error">{error}</AdminMessage>}
+            {status && <AdminMessage tone="success">{status}</AdminMessage>}
+            <AdminButton onClick={handleSubmit} disabled={saving || !selectedStudentId || !form.description.trim() || !form.amount || !form.dueDate} className="w-full sm:w-auto">{saving ? 'Creating…' : 'Create invoice'}</AdminButton>
+          </div>
+        </AdminSurface>
+      </div>
+
+      <AdminSectionHeading title="Student ledger" subtitle={selectedStudent ? `${selectedStudent.enrollmentNo} · ${studentInvoices.length} invoice${studentInvoices.length === 1 ? '' : 's'}` : 'Select a student to view their invoices'} />
+      {!selectedStudent ? (
+        <EmptyState title="No student selected" hint="Choose a student above to view their invoice history." />
+      ) : studentInvoices.length === 0 ? (
+        <EmptyState title="No invoices yet" hint="Create the first invoice using the form above." />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {studentInvoices.map((inv) => (
+            <AdminSurface key={inv.id} className="p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0"><p className="font-medium text-slate-950">{inv.description}</p><p className="mt-1 text-xs text-slate-500">Due {new Date(inv.dueDate).toLocaleDateString()}</p></div>
+                <AdminPill tone={inv.status === 'PAID' ? 'success' : inv.status === 'OVERDUE' ? 'danger' : 'warning'}>{inv.status}</AdminPill>
+              </div>
+              <p className="mt-4 font-data text-lg font-semibold text-slate-900">{money(inv.amount)}</p>
+            </AdminSurface>
           ))}
         </div>
       )}

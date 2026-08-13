@@ -4,15 +4,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
-import { Ribbon } from '@/components/ui/ribbon';
+import { AdminButton, AdminField, AdminMessage, AdminPill, AdminSectionHeading, AdminSurface, inputClass } from '../_components/admin-ui';
 
-interface Department {
-  id: string;
-  name: string;
-  code: string;
-  dayStartTime: string | null;
-  dayEndTime: string | null;
-}
+interface Department { id: string; name: string; code: string; dayStartTime: string | null; dayEndTime: string | null; }
 
 export default function AdminDepartmentsPage() {
   const { accessToken } = useAuth();
@@ -24,8 +18,9 @@ export default function AdminDepartmentsPage() {
 
   function load() {
     if (!accessToken) return;
-    apiFetch<Department[]>('/departments', { token: accessToken }).then(setDepartments).catch(() => {});
+    apiFetch<Department[]>('/departments', { token: accessToken }).then(setDepartments).catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load departments'));
   }
+
   useEffect(load, [accessToken]);
 
   function update(field: keyof typeof form, value: string) {
@@ -58,89 +53,59 @@ export default function AdminDepartmentsPage() {
   }
 
   return (
-    <main className="p-6 lg:p-10">
-      <PageHeader
-        eyebrow="Academic Structure"
-        title="Departments"
-        subtitle="The university's departments. New ones start with no courses or students — build those up from Manage Users and the timetable."
-      />
+    <main className="min-w-0 p-4 sm:p-6 lg:p-10">
+      <PageHeader eyebrow="Academic Structure" title="Departments" subtitle="Configure academic departments and the class-day window used by timetable generation." />
 
-      {status && <p className="mb-3 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{status}</p>}
-      {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
-      <div className="ledger-card mb-8 max-w-xl space-y-3 p-6">
-        <p className="font-serif text-base font-semibold text-slate-900">Add a department</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Full name</span>
-            <input
-              placeholder="e.g. Computer Science"
-              value={form.name}
-              onChange={(e) => update('name', e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Code</span>
-            <input
-              placeholder="e.g. CS"
-              value={form.code}
-              onChange={(e) => update('code', e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-          </label>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Class day start</span>
-            <input
-              type="time"
-              value={form.dayStartTime}
-              onChange={(e) => update('dayStartTime', e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Class day end</span>
-            <input
-              type="time"
-              value={form.dayEndTime}
-              onChange={(e) => update('dayEndTime', e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            />
-          </label>
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          onClick={handleAdd}
-          disabled={saving || !form.name.trim() || !form.code.trim()}
-          className="rounded-md bg-slate-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-40"
-        >
-          {saving ? 'Creating...' : 'Add Department'}
-        </button>
-        <p className="text-xs text-slate-400">The day-start/end window feeds the timetable generator's hour grid for this department.</p>
-      </div>
-
-      <h2 className="mb-3 font-serif text-lg font-semibold text-slate-900">
-        All Departments <span className="text-sm font-normal text-slate-400">({departments.length})</span>
-      </h2>
-      {departments.length === 0 ? (
-        <EmptyState title="No departments yet" hint="Add the first one above — it'll appear here." />
-      ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {departments.map((d) => (
-            <div key={d.id} className="ledger-card p-5">
-              <div className="mb-1 flex items-start justify-between gap-2">
-                <p className="font-medium text-slate-900">{d.name}</p>
-                <Ribbon tone="navy">{d.code}</Ribbon>
-              </div>
-              <p className="mt-3 font-data text-xs text-slate-400">
-                Class window: {d.dayStartTime ? `${d.dayStartTime} – ${d.dayEndTime ?? 'late'}` : 'Not set'}
-              </p>
+      <div className="mb-8 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+        <AdminSurface className="p-5 sm:p-6">
+          <AdminSectionHeading title="Add department" subtitle="Create the academic unit first; courses and users can be added afterward." />
+          <div className="space-y-4">
+            <AdminField label="Full name">
+              <input className={inputClass} placeholder="Computer Science" value={form.name} onChange={(e) => update('name', e.target.value)} />
+            </AdminField>
+            <AdminField label="Department code" hint="Use the short code students recognize, such as CS or SE.">
+              <input className={`${inputClass} font-data uppercase`} maxLength={8} placeholder="CS" value={form.code} onChange={(e) => update('code', e.target.value)} />
+            </AdminField>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AdminField label="Class day starts">
+                <input type="time" className={inputClass} value={form.dayStartTime} onChange={(e) => update('dayStartTime', e.target.value)} />
+              </AdminField>
+              <AdminField label="Class day ends">
+                <input type="time" className={inputClass} value={form.dayEndTime} onChange={(e) => update('dayEndTime', e.target.value)} />
+              </AdminField>
             </div>
-          ))}
-        </div>
-      )}
+            {error && <AdminMessage tone="error">{error}</AdminMessage>}
+            {status && <AdminMessage tone="success">{status}</AdminMessage>}
+            <AdminButton onClick={handleAdd} disabled={saving || !form.name.trim() || !form.code.trim()} className="w-full sm:w-auto">
+              {saving ? 'Creating…' : 'Add department'}
+            </AdminButton>
+          </div>
+        </AdminSurface>
+
+        <AdminSurface className="p-5 sm:p-6">
+          <AdminSectionHeading title="Current departments" subtitle={`${departments.length} configured`} />
+          {departments.length === 0 ? (
+            <EmptyState title="No departments yet" hint="Create the first department using the form." />
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {departments.map((d) => (
+                <div key={d.id} className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-950">{d.name}</p>
+                      <p className="mt-1 text-xs text-slate-400">Class window</p>
+                    </div>
+                    <AdminPill tone="dark">{d.code}</AdminPill>
+                  </div>
+                  <p className="mt-3 font-data text-xs text-slate-600">
+                    {d.dayStartTime ? `${d.dayStartTime} – ${d.dayEndTime ?? 'open'}` : 'Not configured'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </AdminSurface>
+      </div>
     </main>
   );
 }
