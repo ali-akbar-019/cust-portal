@@ -5,7 +5,6 @@ import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError, absoluteFileUrl } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
 import { Ribbon } from '@/components/ui/ribbon';
-import { RoleLayout } from '@/components/shared/role-layout';
 
 interface MySection {
   id: string;
@@ -348,7 +347,7 @@ export default function TeacherAssignmentsPage() {
 
   if (isLoading) {
     return (
-      <main className="p-6 lg:p-10">
+      <main className="min-w-0 max-w-full overflow-x-hidden p-4 sm:p-6 lg:p-10">
         <PageHeader
           eyebrow="Faculty"
           title="Assignments"
@@ -364,7 +363,7 @@ export default function TeacherAssignmentsPage() {
 
   return (
 
-    <main className="p-6 lg:p-10">
+    <main className="min-w-0 max-w-full overflow-x-hidden p-4 sm:p-6 lg:p-10">
       <PageHeader
         eyebrow="Faculty"
         title="Assignments"
@@ -372,14 +371,11 @@ export default function TeacherAssignmentsPage() {
       />
 
       {/* Tabs: Past Due / Open */}
-      <div className="mb-4 overflow-hidden rounded-md border border-slate-300">
-        <div className="flex border-b border-slate-200">
+      <div className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-white/90 shadow-sm">
+        <div className="grid grid-cols-2">
           <button
             type="button"
-            className={`flex-1 border-b-2 py-2 text-sm font-medium transition-colors hover:bg-slate-50 ${activeTab === 'past'
-              ? 'border-b-red-600 bg-white text-slate-900'
-              : 'border-b-transparent text-slate-500'
-              }`}
+            className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'past' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
             onClick={() => setActiveTab('past')}
             aria-selected={activeTab === 'past'}
           >
@@ -393,10 +389,7 @@ export default function TeacherAssignmentsPage() {
 
           <button
             type="button"
-            className={`flex-1 border-b-2 py-2 text-sm font-medium transition-colors hover:bg-slate-50 ${activeTab === 'open'
-              ? 'border-b-red-600 bg-white text-slate-900'
-              : 'border-b-transparent text-slate-500'
-              }`}
+            className={`border-b-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === 'open' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
             onClick={() => setActiveTab('open')}
             aria-selected={activeTab === 'open'}
           >
@@ -411,15 +404,13 @@ export default function TeacherAssignmentsPage() {
       </div>
 
       {/* Section selector */}
-      <label className="mb-8 flex max-w-md items-center gap-2">
-        <span className="shrink-0 text-sm font-medium text-slate-700">
-          Section
-        </span>
+      <label className="mb-8 block max-w-3xl">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Section</span>
 
         <select
           value={sectionId}
           onChange={(e) => setSectionId(e.target.value)}
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
         >
           {sections.length === 0 && (
             <option value="">
@@ -439,15 +430,18 @@ export default function TeacherAssignmentsPage() {
         </select>
       </label>
 
-      <div className="mb-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mb-8 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(320px,0.78fr)_minmax(0,1.22fr)]">
         {/* Create assignment */}
-        <div className="ledger-card space-y-3 p-6">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-6">
           <p className="font-serif text-base font-semibold text-slate-900">
             Post an assignment
           </p>
 
-          <input
-            placeholder="Title e.g. Assignment 2 — Case study"
+          <div className="mt-5 space-y-4">
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Title</span>
+            <input
+            placeholder="Assignment 2 — Case study"
             value={form.title}
             onChange={(e) =>
               setForm((previous) => ({
@@ -455,10 +449,13 @@ export default function TeacherAssignmentsPage() {
                 title: e.target.value,
               }))
             }
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          />
+            className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+            />
+          </label>
 
-          <textarea
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Instructions</span>
+            <textarea
             placeholder="Description / instructions"
             value={form.description}
             onChange={(e) =>
@@ -467,9 +464,10 @@ export default function TeacherAssignmentsPage() {
                 description: e.target.value,
               }))
             }
-            rows={3}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          />
+            rows={5}
+            className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm leading-6 outline-none transition placeholder:text-slate-400 focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+            />
+          </label>
 
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">
@@ -485,7 +483,7 @@ export default function TeacherAssignmentsPage() {
                   deadline: e.target.value,
                 }))
               }
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
             />
           </label>
 
@@ -516,10 +514,11 @@ export default function TeacherAssignmentsPage() {
               (section) => section.id === sectionId
             )?.course.code ?? 'this section'}
           </button>
+          </div>
         </div>
 
         {/* Assignment list */}
-        <div className="ledger-card p-6">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:p-6">
           <p className="mb-3 font-serif text-base font-semibold text-slate-900">
             Assignments posted{' '}
             <span className="text-sm font-normal text-slate-400">
@@ -550,10 +549,7 @@ export default function TeacherAssignmentsPage() {
                     onClick={() =>
                       loadDetail(assignment.id)
                     }
-                    className={`flex w-full items-center justify-between gap-2 rounded-md border p-3 text-left transition ${selectedId === assignment.id
-                      ? 'border-slate-900 bg-slate-50'
-                      : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
+                    className={`flex w-full items-center justify-between gap-3 rounded-xl border p-4 text-left transition hover:-translate-y-px ${selectedId === assignment.id ? 'border-slate-900 bg-slate-50' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'}`}
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-slate-900">
@@ -618,11 +614,11 @@ export default function TeacherAssignmentsPage() {
               hint="Students' work will appear here once they upload before the deadline."
             />
           ) : (
-            <div className="max-w-2xl space-y-3">
+            <div className="grid max-w-3xl gap-3">
               {detail.submissions.map((submission) => (
                 <div
                   key={submission.id}
-                  className="ledger-card p-5"
+                  className="rounded-xl border border-slate-200 bg-white/90 p-5 shadow-sm"
                 >
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="font-data text-sm font-medium text-slate-900">
@@ -645,13 +641,13 @@ export default function TeacherAssignmentsPage() {
                     )}
                     target="_blank"
                     rel="noreferrer"
-                    className="mb-3 inline-block text-sm text-blue-600 underline"
+                    className="mb-3 inline-flex rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                   >
                     View submission file
                   </a>
 
                   {submission.grade !== null ? (
-                    <div className="rounded-md bg-slate-50 p-3 text-sm">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 text-sm">
                       <p className="font-medium text-green-700">
                         Graded: {submission.grade}/100
                       </p>
@@ -686,7 +682,7 @@ export default function TeacherAssignmentsPage() {
                             },
                           }))
                         }
-                        className="w-28 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm sm:w-28"
                       />
 
                       <input
@@ -707,7 +703,7 @@ export default function TeacherAssignmentsPage() {
                             },
                           }))
                         }
-                        className="w-full flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        className="w-full min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm"
                       />
 
                       <button
@@ -718,7 +714,7 @@ export default function TeacherAssignmentsPage() {
                         disabled={
                           !grades[submission.id]?.grade.trim()
                         }
-                        className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-40"
+                        className="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-40 sm:w-auto"
                       >
                         Save Grade
                       </button>

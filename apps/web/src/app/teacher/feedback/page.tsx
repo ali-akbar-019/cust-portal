@@ -5,144 +5,24 @@ import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
 
-interface MySection {
-  id: string;
-  course: { title: string; code: string };
-  enrolledCount: number;
-}
-interface FeedbackSummary {
-  count: number;
-  average: number | null;
-  comments: (string | null)[];
-}
+interface MySection { id: string; course: { title: string; code: string }; enrolledCount: number; }
+interface FeedbackSummary { count: number; average: number | null; comments: (string | null)[]; }
 
 export default function TeacherFeedbackPage() {
   const { accessToken, profile } = useAuth();
-  const [sections, setSections] = useState<MySection[]>([]);
-  const [sectionId, setSectionId] = useState('');
-  const [summary, setSummary] = useState<FeedbackSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!accessToken || !profile?.teacherId) return;
-    apiFetch<MySection[]>(`/teachers/${profile.teacherId}/sections`, { token: accessToken })
-      .then((s) => {
-        setSections(s);
-        if (s.length > 0) setSectionId(s[0]?.id ?? '');
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, profile]);
-
-  async function load() {
-    if (!sectionId) return;
-    setError(null);
-    setIsLoading(true);
-    try {
-      const data = await apiFetch<FeedbackSummary>(`/feedback/section/${sectionId}`, { token: accessToken });
-      setSummary(data);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to load feedback');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionId]);
-
-  const current = sections.find((s) => s.id === sectionId);
-
-  return (
-    <main className="p-6 lg:p-10">
-      <PageHeader
-        eyebrow="Course Evaluation"
-        title="Section Feedback"
-        subtitle="Anonymized responses from the students in each of your sections — you see the averages and comments, never who wrote them."
-      />
-
-      <label className="mb-6 flex max-w-md items-center gap-2">
-        <span className="shrink-0 text-sm font-medium text-slate-700">Section</span>
-        <select
-          value={sectionId}
-          onChange={(e) => setSectionId(e.target.value)}
-          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
-        >
-          {sections.length === 0 && <option value="">No sections assigned</option>}
-          {sections.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.course.title} ({s.course.code}) · {s.enrolledCount} students
-            </option>
-          ))}
-        </select>
-      </label>
-
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
-      {isLoading && <p className="text-sm text-slate-500">Loading feedback…</p>}
-
-      {summary && (
-        <>
-          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="ledger-card p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Course</p>
-              <p className="mt-1 font-serif text-lg font-semibold text-slate-900">
-                {current ? `${current.course.title} (${current.course.code})` : '—'}
-              </p>
-            </div>
-            <div className="ledger-card p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Average rating</p>
-              <p className="mt-1 font-serif text-4xl font-semibold text-slate-900">
-                {summary.average ?? '—'}
-                <span className="text-base font-normal text-slate-400"> / 5</span>
-              </p>
-            </div>
-            <div className="ledger-card p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Responses</p>
-              <p className="mt-1 font-serif text-4xl font-semibold text-slate-900">{summary.count}</p>
-            </div>
-          </div>
-
-          {summary.average !== null && (
-            <div className="mb-6 max-w-md">
-              <div className="mb-1 flex items-center gap-2 text-sm">
-                <span className="font-medium text-slate-700">Satisfaction</span>
-                <span className="font-data text-slate-500">{summary.average}/5</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={`h-full rounded-full ${summary.average >= 4 ? 'bg-green-600' : summary.average >= 3 ? 'bg-yellow-500' : 'bg-red-600'}`}
-                  style={{ width: `${(summary.average / 5) * 100}%` }}
-                />
-              </div>
-              <p className="mt-1 text-xs text-slate-400">
-                {summary.average >= 4 ? 'Strong satisfaction — keep doing what you are doing.' : summary.average >= 3 ? 'Generally positive with room to improve.' : 'Students are dissatisfied — consider reviewing your approach.'}
-              </p>
-            </div>
-          )}
-
-          {summary.comments.length === 0 && summary.count > 0 ? (
-            <EmptyState title="Responses received, no comments" hint="Students rated the course but left no written feedback." />
-          ) : summary.count === 0 ? (
-            <EmptyState title="No feedback yet" hint="Students will be able to review this section once they have attended a few classes." />
-          ) : (
-            <>
-              <p className="mb-3 font-serif text-base font-semibold text-slate-900">
-                Student comments <span className="text-sm font-normal text-slate-400">(anonymized)</span>
-              </p>
-              <div className="max-w-2xl space-y-2">
-                {summary.comments.map((c, i) => (
-                  <blockquote key={i} className="ledger-card border-l-4 border-l-slate-200 p-4 text-sm text-slate-600">
-                    “{c}”
-                  </blockquote>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
-    </main>
-  );
+  const [sections, setSections] = useState<MySection[]>([]); const [sectionId, setSectionId] = useState('');
+  const [summary, setSummary] = useState<FeedbackSummary | null>(null); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(false);
+  useEffect(() => { if (!accessToken || !profile?.teacherId) return; apiFetch<MySection[]>(`/teachers/${profile.teacherId}/sections`, { token: accessToken }).then((d) => { setSections(d); setSectionId(d[0]?.id ?? ''); }).catch((e) => setError(e instanceof ApiError ? e.message : 'Failed to load sections')); }, [accessToken, profile?.teacherId]);
+  useEffect(() => { if (!sectionId || !accessToken) { setSummary(null); return; } setLoading(true); setError(null); apiFetch<FeedbackSummary>(`/feedback/section/${sectionId}`, { token: accessToken }).then(setSummary).catch((e) => setError(e instanceof ApiError ? e.message : 'Failed to load feedback')).finally(() => setLoading(false)); }, [sectionId, accessToken]);
+  const current = sections.find((s) => s.id === sectionId); const comments = summary?.comments.filter((c): c is string => Boolean(c?.trim())) ?? []; const average = summary?.average ?? null;
+  return <main className="min-w-0 overflow-x-hidden p-4 sm:p-6 lg:p-10">
+    <PageHeader eyebrow="Course Evaluation" title="Section Feedback" subtitle="Review anonymized ratings and written comments from your students." />
+    <section className="mb-6 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm sm:p-6"><div className="max-w-3xl"><p className="mb-1 text-xs font-semibold uppercase tracking-[.12em] text-slate-500">Section</p><select value={sectionId} onChange={(e) => setSectionId(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10">{sections.length === 0 && <option value="">No sections assigned</option>}{sections.map((s) => <option key={s.id} value={s.id}>{s.course.title} ({s.course.code}) · {s.enrolledCount} students</option>)}</select></div></section>
+    {error && <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+    {loading ? <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Loading feedback…</div> : summary ? <>
+      <section className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-[1.35fr_.8fr_.8fr]"><div className="rounded-2xl border border-slate-200/90 bg-slate-900 p-6 text-white shadow-sm"><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-slate-400">Course</p><h2 className="mt-2 font-serif text-xl font-semibold">{current?.course.title ?? '—'}</h2><p className="mt-1 font-data text-xs text-slate-400">{current?.course.code ?? '—'}</p></div><div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm"><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-slate-400">Average rating</p><p className="mt-2 font-serif text-3xl font-semibold text-slate-900">{average === null ? '—' : average.toFixed(2)}</p><p className="mt-1 text-xs text-slate-400">out of 5</p></div><div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm"><p className="text-[11px] font-semibold uppercase tracking-[.14em] text-slate-400">Responses</p><p className="mt-2 font-serif text-3xl font-semibold text-slate-900">{summary.count}</p><p className="mt-1 text-xs text-slate-400">anonymous submissions</p></div></section>
+      {average !== null && <section className="mb-8 max-w-2xl rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm"><div className="flex items-end justify-between gap-4"><div><h2 className="font-serif text-lg font-semibold text-slate-900">Overall satisfaction</h2><p className="mt-1 text-sm text-slate-500">Average student rating for this section.</p></div><span className="font-data text-sm font-semibold text-slate-800">{average.toFixed(2)} / 5</span></div><div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-slate-900" style={{ width: `${Math.min(100, (average / 5) * 100)}%` }} /></div></section>}
+      {comments.length === 0 ? <EmptyState title={summary.count ? 'No written comments' : 'No feedback yet'} hint={summary.count ? 'Students submitted ratings but did not leave written comments.' : 'Student evaluations will appear here when responses are submitted.'} /> : <section className="max-w-3xl"><div className="mb-4"><h2 className="font-serif text-lg font-semibold text-slate-900">Student comments</h2><p className="mt-1 text-sm text-slate-500">Comments are shown anonymously.</p></div><div className="space-y-3">{comments.map((comment, i) => <article key={i} className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm"><span className="block text-2xl leading-none text-slate-300">“</span><p className="mt-2 text-sm leading-7 text-slate-600">{comment}</p></article>)}</div></section>}
+    </> : <EmptyState title="Select a section" hint="Choose one of your sections to review its student feedback." />}
+  </main>;
 }

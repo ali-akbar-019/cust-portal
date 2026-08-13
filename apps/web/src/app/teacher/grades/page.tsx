@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
-import { Ribbon } from '@/components/ui/ribbon';
 import { percentageToGradeLabel } from '@/lib/grade-scale';
 
 interface MySection {
@@ -596,7 +595,7 @@ export default function TeacherGradesPage() {
 
       {/* Summary cards */}
       <div className="mb-6 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        <div className="ledger-card min-w-0 p-4">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             Sections
           </p>
@@ -606,7 +605,7 @@ export default function TeacherGradesPage() {
           </p>
         </div>
 
-        <div className="ledger-card min-w-0 p-4">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             Current course
           </p>
@@ -616,7 +615,7 @@ export default function TeacherGradesPage() {
           </p>
         </div>
 
-        <div className="ledger-card min-w-0 p-4">
+        <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             Students in sheet
           </p>
@@ -708,7 +707,7 @@ export default function TeacherGradesPage() {
 
       {!sheet ? (
         sectionId ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm text-slate-500">
               Loading grade sheet...
             </p>
@@ -726,10 +725,10 @@ export default function TeacherGradesPage() {
           {/* Sheet heading */}
           <div className="mb-4 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <Ribbon tone="navy">
+              <span className="rounded-md bg-slate-100 px-2.5 py-1 font-data text-xs font-medium text-slate-600">
                 {sheet.course.code} ·{' '}
                 {sheet.rows.length} students
-              </Ribbon>
+              </span>
 
               <span className="text-xs leading-relaxed text-slate-400">
                 Enter marks and the maximum marks for
@@ -787,7 +786,7 @@ export default function TeacherGradesPage() {
                     return (
                       <tr
                         key={row.student.id}
-                        className="group hover:bg-slate-50/70"
+                        className="group hover:bg-slate-50/80"
                       >
                         {/* Student */}
                         <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-4 py-3 group-hover:bg-slate-50">
@@ -825,7 +824,7 @@ export default function TeacherGradesPage() {
                           ) : (
                             <div>
                               <p className="font-data text-sm font-semibold text-slate-900">
-                                {total.pct.toFixed(1)}%
+                                {total.pct.toFixed(2)}%
                               </p>
 
                               {gradeLabel && (
@@ -835,8 +834,8 @@ export default function TeacherGradesPage() {
                               )}
 
                               <p className="mt-1 text-[10px] text-slate-400">
-                                {total.marks} /{' '}
-                                {total.max}
+                                {total.marks.toFixed(2)} /{' '}
+                                {total.max.toFixed(2)}
                               </p>
                             </div>
                           )}
@@ -870,7 +869,7 @@ export default function TeacherGradesPage() {
               return (
                 <article
                   key={row.student.id}
-                  className="min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                  className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                 >
                   {/* Student header */}
                   <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
@@ -902,7 +901,7 @@ export default function TeacherGradesPage() {
                         ) : (
                           <>
                             <p className="font-data text-sm font-semibold text-slate-900">
-                              {total.pct.toFixed(1)}%
+                              {total.pct.toFixed(2)}%
                             </p>
 
                             {gradeLabel && (
@@ -921,7 +920,7 @@ export default function TeacherGradesPage() {
                     {components.map((component) => (
                       <div
                         key={component.key}
-                        className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/70 p-3"
+                        className="min-w-0 rounded-lg border border-slate-100 bg-slate-50/80 p-3"
                       >
                         <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
                           <p className="truncate text-xs font-semibold text-slate-700">
@@ -950,7 +949,7 @@ export default function TeacherGradesPage() {
                       </p>
 
                       <p className="text-[11px] text-slate-400">
-                        {total.marks} / {total.max}{' '}
+                        {total.marks.toFixed(2)} / {total.max.toFixed(2)}{' '}
                         marks
                       </p>
                     </div>
@@ -962,7 +961,7 @@ export default function TeacherGradesPage() {
                         </span>
                       ) : (
                         <span className="font-data text-sm font-semibold text-slate-900">
-                          {total.pct.toFixed(1)}%
+                          {total.pct.toFixed(2)}%
                         </span>
                       )}
                     </div>

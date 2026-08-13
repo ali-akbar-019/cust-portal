@@ -1,103 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api-client';
+import { PageHeader, EmptyState } from '@/components/ui/page-header';
 
-interface SlotView {
-  id: string;
-  day: string;
-  startTime: string;
-  endTime: string;
-  room: { label: string; floor: { block: { name: string } } };
-  section: { course: { title: string; code: string } };
-}
-
-const DAY_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const DAY_LABEL: Record<string, string> = { MON: 'Mon', TUE: 'Tue', WED: 'Wed', THU: 'Thu', FRI: 'Fri', SAT: 'Sat' };
-const COURSE_COLORS = [
-  'bg-slate-900 text-white',
-  'bg-red-600 text-white',
-  'bg-blue-600 text-white',
-  'bg-green-600 text-white',
-  'bg-yellow-500 text-white',
-  'bg-slate-700 text-white',
-];
+interface SlotView { id: string; day: string; startTime: string; endTime: string; room: { label: string; floor: { block: { name: string } } }; section: { course: { title: string; code: string } }; }
+const DAYS = ['MON','TUE','WED','THU','FRI','SAT']; const LABEL: Record<string,string> = { MON:'Monday', TUE:'Tuesday', WED:'Wednesday', THU:'Thursday', FRI:'Friday', SAT:'Saturday' };
 
 export default function TeacherTimetablePage() {
-  const { accessToken, profile, isLoading: authLoading } = useAuth();
-  const [slots, setSlots] = useState<SlotView[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (authLoading || !accessToken) return;
-    if (!profile?.teacherId) {
-      setError('Could not resolve your teacher profile. Try logging out and back in.');
-      setIsLoading(false);
-      return;
-    }
-    apiFetch<SlotView[]>(`/teachers/${profile.teacherId}/timetable`, { token: accessToken })
-      .then(setSlots)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load timetable'))
-      .finally(() => setIsLoading(false));
-  }, [accessToken, profile, authLoading]);
-
-  if (isLoading) return <main className="p-8 text-sm text-slate-500">Loading timetable...</main>;
-  if (error) return <main className="p-8 text-sm text-red-600">{error}</main>;
-
-  const uniqueTimes = [...new Set(slots.map((s) => s.startTime))].sort();
-  const courseColorMap = new Map<string, string>();
-  [...new Set(slots.map((s) => s.section.course.code))].forEach((code, i) => courseColorMap.set(code, COURSE_COLORS[i % COURSE_COLORS.length] ?? 'bg-slate-900 text-white'));
-
-  function slotAt(day: string, time: string) {
-    return slots.find((s) => s.day === day && s.startTime === time);
-  }
-
-  return (
-    <main className="p-6 lg:p-10">
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">Weekly Schedule</p>
-      <h1 className="mb-6 font-serif text-2xl font-semibold text-slate-900">My Teaching Schedule</h1>
-
-      {slots.length === 0 ? (
-        <p className="text-sm text-slate-500">No timetable slots yet.</p>
-      ) : (
-        <div className="scroll-area ledger-card overflow-x-auto p-2">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="w-20 border-b border-slate-200 p-2 text-left text-xs font-medium uppercase tracking-wide text-slate-400"></th>
-                {DAY_ORDER.map((d) => (
-                  <th key={d} className="border-b border-slate-200 p-2 text-left text-xs font-medium uppercase tracking-wide text-slate-400">
-                    {DAY_LABEL[d]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {uniqueTimes.map((time) => (
-                <tr key={time}>
-                  <td className="border-b border-slate-100 p-2 align-top font-data text-xs text-slate-400">{time}</td>
-                  {DAY_ORDER.map((day) => {
-                    const slot = slotAt(day, time);
-                    return (
-                      <td key={day} className="border-b border-slate-100 p-1.5 align-top">
-                        {slot && (
-                          <div className={`rounded-md p-2 text-xs ${courseColorMap.get(slot.section.course.code)}`}>
-                            <p className="font-data font-medium">{slot.section.course.code}</p>
-                            <p className="opacity-90">{slot.room.floor.block.name}-{slot.room.label}</p>
-                            <p className="opacity-75">{slot.startTime}–{slot.endTime}</p>
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </main>
-  );
+  const { accessToken, profile, isLoading: authLoading } = useAuth(); const [slots,setSlots]=useState<SlotView[]>([]); const [error,setError]=useState<string|null>(null); const [loading,setLoading]=useState(true);
+  useEffect(()=>{ if(authLoading||!accessToken)return; if(!profile?.teacherId){setError('Could not resolve your teacher profile. Try logging out and back in.');setLoading(false);return;} apiFetch<SlotView[]>(`/teachers/${profile.teacherId}/timetable`,{token:accessToken}).then(setSlots).catch(e=>setError(e instanceof ApiError?e.message:'Failed to load timetable')).finally(()=>setLoading(false)); },[accessToken,profile?.teacherId,authLoading]);
+  const times=useMemo(()=>[...new Set(slots.map(s=>s.startTime))].sort(),[slots]); const slotAt=(d:string,t:string)=>slots.find(s=>s.day===d&&s.startTime===t);
+  return <main className="min-w-0 overflow-x-hidden p-4 sm:p-6 lg:p-10"><PageHeader eyebrow="Weekly Schedule" title="My Teaching Schedule" subtitle="A clear weekly view of your assigned classes, rooms and times." />
+    {loading?<div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">Loading timetable…</div>:error?<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>:slots.length===0?<EmptyState title="No timetable assigned" hint="Your teaching slots will appear here once scheduling is finalized." />:<>
+      <section className="mb-8 rounded-2xl border border-slate-200/90 bg-white shadow-sm"><header className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6"><div><h2 className="font-serif text-lg font-semibold text-slate-900">Weekly overview</h2><p className="mt-1 text-xs text-slate-500">{slots.length} teaching slot{slots.length===1?'':'s'}</p></div></header><div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[900px] border-collapse"><thead><tr><th className="w-24 border-b border-slate-100 px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[.14em] text-slate-400">Time</th>{DAYS.map(d=><th key={d} className="border-b border-slate-100 px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[.14em] text-slate-400">{LABEL[d]}</th>)}</tr></thead><tbody>{times.map(t=><tr key={t}><td className="border-b border-slate-100 px-5 py-3 align-top font-data text-xs text-slate-400">{t}</td>{DAYS.map(d=>{const s=slotAt(d,t);return <td key={d} className="border-b border-slate-100 p-2 align-top">{s?<div className="min-h-[92px] rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="font-data text-xs font-semibold text-slate-900">{s.section.course.code}</p><p className="mt-1 text-xs leading-5 text-slate-600">{s.section.course.title}</p><p className="mt-2 text-[10px] text-slate-400">{s.room.floor.block.name} · {s.room.label}</p><p className="mt-0.5 font-data text-[10px] text-slate-400">{s.startTime}–{s.endTime}</p></div>:<div className="min-h-[92px] rounded-xl border border-dashed border-slate-100"/>}</td>})}</tr>)}</tbody></table></div></section>
+      <section className="md:hidden"><div className="mb-3"><h2 className="font-serif text-lg font-semibold text-slate-900">Your classes</h2><p className="mt-1 text-sm text-slate-500">Stacked for easier mobile viewing.</p></div><div className="space-y-3">{slots.slice().sort((a,b)=>DAYS.indexOf(a.day)-DAYS.indexOf(b.day)||a.startTime.localeCompare(b.startTime)).map(s=><article key={s.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="font-data text-xs font-semibold text-slate-900">{s.section.course.code}</p><h3 className="mt-1 text-sm font-medium text-slate-800">{s.section.course.title}</h3></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-500">{LABEL[s.day]}</span></div><div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3"><div><p className="text-[10px] uppercase tracking-[.12em] text-slate-400">Time</p><p className="mt-1 font-data text-xs text-slate-700">{s.startTime}–{s.endTime}</p></div><div><p className="text-[10px] uppercase tracking-[.12em] text-slate-400">Room</p><p className="mt-1 text-xs text-slate-700">{s.room.floor.block.name}-{s.room.label}</p></div></div></article>)}</div></section>
+    </>}</main>;
 }
