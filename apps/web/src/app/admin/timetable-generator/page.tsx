@@ -111,7 +111,7 @@ function toMinutes(time?: string): number {
     return 0;
   }
 
-  return hours * 60 + minutes;
+  return hours!! * 60 + minutes!!;
 }
 
 function formatTime(time?: string): string {

@@ -9,7 +9,11 @@ const LIBRARIAN_NAV = [
 
 export default function LibrarianLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RoleLayout title="Librarian" items={LIBRARIAN_NAV} notificationsHref="/librarian/notifications">
+    <RoleLayout
+      title="Librarian"
+      items={LIBRARIAN_NAV}
+      notificationsHref="/librarian/notifications"
+    >
       {children}
     </RoleLayout>
   );
