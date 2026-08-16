@@ -1,0 +1,76 @@
+CUST University Portal
+Internship Project: Daily Work Log
+August 3 to August 17, 2026
+Project repository: github.com/ali-akbar-019/cust-portal
+This log records the daily progress made while building the CUST University Portal, a full replacement for the university's student portal. It covers timetables, attendance, grades, assignments, enrollment, the library, fees, complaints, and more, built for students, teachers, admin staff, and the librarian.
+August 3, 2026
+•	Spent the day discussing project ideas for the internship. After going through several options, finalized the plan to build a full university portal for CUST that would replace the current student portal.
+•	Decided on the technologies to use for the project. Chose Next.js for building the website pages, NestJS for the backend server, and MySQL as the database.
+•	Set up the project folders and basic file structure so the frontend part and backend part could be built alongside each other without conflicts.
+•	Wrote down the list of features the portal would need, based on what the current CUST portal offers, so nothing important would be missed.
+August 4, 2026
+•	Worked on the overall system design, mapping out how the different parts of the portal such as students, teachers, and admin staff would connect and communicate with each other.
+•	Designed the database structure, including tables for users, students, teachers, courses, and the campus blocks and rooms.
+•	Wrote design notes for the automatic timetable feature, explaining how the system would avoid double booking a teacher, a room, or a class at the same time.
+•	Reviewed the plan once more to make sure the database structure would support all the planned features.
+August 5, 2026
+•	Built the login system for the portal, including secure password storage and access tokens so users stay signed in safely.
+•	Set up three types of accounts, Student, Teacher, and Admin, each with different permissions and access to different pages.
+•	Created a script that fills the database with sample departments, campus blocks, and rooms so the system could be tested properly from the start.
+•	Tested the login flow end to end to confirm each account type could sign in without issues.
+August 6, 2026
+•	Built the features needed to add and manage student and teacher accounts from the backend.
+•	Connected the login page on the website to the backend so people could actually sign in and reach their dashboard.
+•	Added automatic redirection so each type of user is sent to their own dashboard right after logging in, instead of a generic homepage.
+•	Checked that account information stays private and each user can only see their own details.
+August 7, 2026
+•	Built the timetable engine, the part of the system that checks for clashes such as the same room, the same teacher, or the same class being booked twice at once.
+•	Built the automatic timetable generator, which schedules all classes for a department without any conflicts.
+•	Added admin pages so staff can view campus rooms and blocks, and run the timetable generator whenever needed.
+•	Ran several test cases to confirm the generator correctly avoids scheduling conflicts.
+August 8, 2026
+•	Built the assignments feature. Teachers can post assignments with a file attached, and students can upload and submit their work before the deadline.
+•	Added a rule so students are not able to submit an assignment once the deadline has passed, keeping things fair for everyone.
+•	Added a list of university departments that other pages of the portal could use, such as the enrollment and timetable pages.
+•	Tested file uploads to make sure documents are saved and can be opened again properly.
+August 9, 2026
+•	Built the attendance feature, allowing teachers to mark each student present or absent for a class.
+•	Added a page for students to check their attendance percentage at any time, with a clear warning shown if it drops too low.
+•	Made sure attendance records are saved by date so a full history is kept for each student and class.
+August 10, 2026
+•	Built the grades feature, letting teachers enter marks for quizzes, assignments, and exams for each student.
+•	Built the results page so students can see their grades and their overall GPA in one place.
+•	Built the announcements feature so admins and teachers can post notices that students will see on their dashboard.
+August 11, 2026
+•	Built the course enrollment feature, letting students sign up for courses during an open enrollment period set by the admin.
+•	Built the library feature, where students can browse available books, reserve a copy, and request a library clearance when needed.
+•	Made sure the enrollment system checks seat limits so a course cannot be overbooked.
+August 12, 2026
+•	Built the fee invoices feature so students can see what they owe and their payment status.
+•	Built the complaints feature and the general requests feature, which covers things like transcript requests and course withdrawal requests.
+•	Built the course feedback feature, where student feedback is kept anonymous so teachers only see the overall results, not who wrote what.
+•	Set up Docker so the whole project can be started with a single command on any computer, which will help a lot when it is time to deploy.
+August 13, 2026
+•	Went through the project carefully and found and fixed several bugs from earlier in the build.
+•	Added a large set of realistic sample data, including many students, teachers, courses, and classes, so the whole system could be tested the way it would actually be used.
+•	Added a fourth account type, Librarian, complete with its own dashboard and pages for managing books and clearance requests.
+•	Rechecked all the earlier features with the new sample data to make sure everything still worked correctly together.
+August 14, 2026
+•	Worked on improving the overall look and feel of the website, aiming for a cleaner and more professional design across every page.
+•	Added charts to the dashboards so attendance, grades, and enrollment numbers are easier to understand at a glance.
+•	Redesigned the timetable page as a proper weekly calendar view instead of a plain list.
+•	Added a page for admins to create new student and teacher accounts directly from the website, without needing to use any outside tools.
+•	Reviewed feedback on the design and made further adjustments to make the site easier and more pleasant to use.
+August 15, 2026
+•	Carried out final testing across every page and every user type, meaning Student, Teacher, Admin, and Librarian.
+•	Fixed the last remaining issues that were found during this round of testing.
+•	Finalized the project documentation, including setup instructions and a summary of all the features that were built.
+•	Confirmed the project is complete, fully working, and ready to be deployed or submitted.
+August 16, 2026
+•	Finished the remaining documentation, including this daily work log and the full project guide that explains every feature and how to set it up.
+•	Carried out one final round of testing across every page and every account type to make sure nothing was left broken.
+•	Confirmed both the website and the backend build and run without errors on a fresh setup.
+•	Uploaded the complete project to the repository on GitHub so the final version is saved and shared.
+August 17, 2026
+•	Did a final walkthrough of the whole portal as a Student, Teacher, Admin, and Librarian to confirm every feature is working as expected.
+•	Submitted the project as the final work of the internship, along with the documentation and this daily log.

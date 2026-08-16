@@ -30,6 +30,7 @@ A full-stack university management portal for **Capital University of Science & 
 - [Running with Docker](#running-with-docker-optional)
 - [Deployment Status](#deployment-status)
 - [Roadmap](#roadmap)
+- [Development Timeline](#development-timeline)
 - [Contributing & Future Enhancement](#contributing--future-enhancement)
 - [License](#license)
 
@@ -357,6 +358,28 @@ See [`PROGRESS.md`](./PROGRESS.md) for the full, up-to-date build log. The proje
 - **Server-side announcement read receipts** (currently client-side in localStorage)
 - **Security hardening** before deployment (see [Security](#security))
 - **Seed realistic CUST data** — real block/room lists and real department timing windows
+
+## Development Timeline
+
+This portal was built over a two-week internship (August 3–17, 2026) as a complete replacement for CUST's existing student portal. The full day-by-day work log is in [`docs/timeline.txt`](./docs/timeline.txt). A quick summary:
+
+| Date | What was done |
+|---|---|
+| **Aug 3** | Finalized the project idea and tech stack (Next.js + NestJS + MySQL), scaffolded the monorepo, wrote the full feature list |
+| **Aug 4** | System design and database schema (users, students, teachers, courses, blocks/floors/rooms); timetable algorithm design notes |
+| **Aug 5** | Login system (bcrypt + JWT), three role accounts (Student/Teacher/Admin), seed script for departments, blocks, and rooms |
+| **Aug 6** | Account management APIs, login page wired to the backend, role-based dashboard redirects, per-user privacy checks |
+| **Aug 7** | Timetable clash-checker and auto-generator, admin blocks/rooms and generator pages, conflict-free scheduling tested |
+| **Aug 8** | Assignments (post with file, submit before deadline, late-submission lock), departments list, uploads tested |
+| **Aug 9** | Attendance (bulk marking, student percentage view with low-attendance warning, dated history) |
+| **Aug 10** | Grades entry, student results page, announcements feature |
+| **Aug 11** | Course enrollment (window-based, seat limits), library (browse, reserve, clearance) |
+| **Aug 12** | Fee invoices, complaints + requests (transcript, course withdraw), anonymous feedback, Docker setup |
+| **Aug 13** | Bug fixes, realistic seed data (students/teachers/courses/sections), fourth role — Librarian — end to end |
+| **Aug 14** | Full UI/UX overhaul ("Collegiate Ledger" theme), dashboard charts, weekly calendar timetable, admin user-creation page |
+| **Aug 15** | Final testing across all four roles, last fixes, documentation finalized |
+| **Aug 16** | Final documentation (project guide, security notes, work log), final build/typecheck, Docker run-through, pushed to GitHub |
+| **Aug 17** | Final walkthrough of every role and final submission of the internship project |
 
 ## Contributing & Future Enhancement
 
